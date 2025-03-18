@@ -1,0 +1,86 @@
+ABP_DynamicTOD_C
+
+UGlobalUIData
+AReactiveEnvironmentActor
+UConversationCamera - do terminala -25 w tył 15 w gorę
+
+!!
+UScripts
+UIndianaGameplayStatics
+UPlayerInteractionComponent
+UPlayerEnvironmentInteractionComponent void OnCombatStateChange(bool bIsInCombat, bool bRestoring);
+
+
+UHighlightComponent
+
+MOŻNA POUSTAWIAĆ OPCJE: UIndianaGameUserSettings
+UConditionals
+AIndianaPlayerController
+AIndianaPlayerCharacter : AIndianaCharacter
+UIndianaGameInstance
+AIndianaUI->GetHUD()
+- UHUDWidget
+- ULedgerWidget
+UReticleWidget
+URadialWidget
+FHUDSetting
+!!
+UIdleCameraComponent
+UConversationCamera
+
+AIndianaUI* UIndianaUIFunctionLibrary::GetIndianaUI
+
+UMainMenuWidget
+UVendorWidget
+UOptionPresenterWidget
+UWeaponStateWidget
+UBackgroundPanelWidget
+
+UMeleeMode : UWeaponMode
+UFireMode : URangedMode : UWeaponMode
+UBeamMode : URangedMode : UWeaponMode
+
+UWeapon
+UWeaponVisuals
+UWeaponAnimationSet
+
+
+UWeaponAnimationsFPV : UWeaponAnimations : UWeaponVisuals
+
+UWeaponAnimInstance
+UFPVAnimInstance : UCharacterAnimInstance : UIndianaAnimInstance : UAnimInstance
+UTPVAnimInstance : UCharacterAnimInstance : UIndianaAnimInstance : UAnimInstance
+UGlobalUIData
+UGlobalWeaponData
+UPrimaryWeaponVisuals
+AProjectile
+AProjectileLauncher
+UAimAssistComponent
+USkeletalMeshModVisual
+URecoilData
+UInstantHitData
+USaveGameManager
+
+AComputerTerminal - fix distance
+ALadder
+ULocomotionLogicComponent
+UPlayerMovementComponent
+UPlayerAppearanceComponent : UAppearanceComponent
+UPlayerTargetingComponent
+UAppearanceComponent
+UPlayerDisableStatusEffect
+UPostProcessEventEffect
+UWeaponAnimationsTPV
+
+
+UIndianaGlobals
+AIndianaWorldSettings
+ACineCombatCamera
+UCineCombatSequencePlayer
+UPS5ActivityManager::OnLoadComplete
+
+
+Pawn->InteractableComponent
+Pawn->InteractionComponent->InteractablesInRange
+Pawn->PlayerEnvironmentComponent
+Pawn->TargetingComponent->ReticleVerticalOffset !! = 0.130f

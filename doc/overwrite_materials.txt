@@ -1,0 +1,3 @@
+MaterialInstanceDynamic.bHasStaticPermutationResource
+
+material: MM_Char_Var2
