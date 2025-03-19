@@ -1,8 +1,10 @@
-ABP_DynamicTOD_C
 
+
+ABP_DynamicTOD_C
+UGlobalMeleeData
 UGlobalUIData
 AReactiveEnvironmentActor
-UConversationCamera - do terminala -25 w tył 15 w gorę
+UConversationCamera - computer terminal fix
 
 !!
 UScripts

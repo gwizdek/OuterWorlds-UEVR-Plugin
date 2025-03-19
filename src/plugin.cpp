@@ -348,13 +348,15 @@ bool OuterWorldsPlugin::modify_interactables_in_range() {
                         static_cast<SDK::APickup*>(component->Outer)->SetActorEnableCollision(true);
                         auto sm_component = static_cast<SDK::APickup*>(component->Outer)->GetComponentByClass(SDK::UStaticMeshComponent::StaticClass());
                         if (sm_component != nullptr) {
+                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetCollisionEnabled(SDK::ECollisionEnabled::QueryAndPhysics);
+                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetCollisionObjectType(SDK::ECollisionChannel::ECC_WorldStatic);
+                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetCollisionResponseToAllChannels(SDK::ECollisionResponse::ECR_Block);
+                            /*static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetCollisionResponseToChannel(SDK::ECollisionChannel::ECC_WorldStatic, SDK::ECollisionResponse::ECR_Block);
+                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetCollisionResponseToChannel(SDK::ECollisionChannel::ECC_WorldDynamic, SDK::ECollisionResponse::ECR_Block);*/
+                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetAllMassScale(0.4f);
                             static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetSimulatePhysics(true);
                             static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetEnableGravity(true);
-                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetCollisionEnabled(SDK::ECollisionEnabled::QueryAndPhysics);
-                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetCollisionResponseToChannel(SDK::ECollisionChannel::ECC_WorldStatic, SDK::ECollisionResponse::ECR_Block);
-                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetCollisionResponseToChannel(SDK::ECollisionChannel::ECC_WorldDynamic, SDK::ECollisionResponse::ECR_Block);
-                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetAllMassScale(0.1f);
-                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->AddImpulse(SDK::FVector{ 1.f, 0.f, 0.f }, SDK::FName(), true);
+                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->AddImpulse(SDK::FVector{ 0.f, 10.f, 10.f }, SDK::FName(), true);
 
                         }
                     }

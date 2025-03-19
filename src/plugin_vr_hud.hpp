@@ -645,7 +645,7 @@ public:
                     m_world,
                     start,
                     end,
-                    SDK::ETraceTypeQuery::TraceTypeQuery4,
+                    SDK::ETraceTypeQuery::TraceTypeQuery6,
                     true,
                     ignore_actors,
                     SDK::EDrawDebugTrace::None,
