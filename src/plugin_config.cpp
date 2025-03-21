@@ -21,13 +21,13 @@ void OuterWorldsPluginConfig::load_plugin_config() {
 
     if (mod_config.has("general")) {
         // use_laser_pointer
-        if (mod_config["general"].has("use_laser_pointer")) {
+        if (mod_config["general"].has("auto_pause_daytime")) {
             try {
-                std::string& use_laser_pointer = mod_config["general"]["use_laser_pointer"];
-                m_cfg_option_use_laser_pointer = std::stoi(use_laser_pointer) == 1;
+                std::string& auto_pause_daytime = mod_config["general"]["auto_pause_daytime"];
+                m_cfg_option_auto_pause_daytime = std::stoi(auto_pause_daytime) == 1;
             }
             catch (...) {
-                API::get()->log_error("[Plugin Config] Invalid Value: [general][use_laser_pointer]");
+                API::get()->log_error("[Plugin Config] Invalid Value: [general][auto_pause_daytime]");
             }
         }
     }
@@ -68,6 +68,17 @@ void OuterWorldsPluginConfig::load_plugin_config() {
                 API::get()->log_error("[Plugin Config] Invalid Value: [attachments][compass]");
             }
         }
+
+        // compass
+        if (mod_config["attachments"].has("item_degradation")) {
+            try {
+                std::string& item_degradation = mod_config["attachments"]["item_degradation"];
+                m_cfg_option_attach_item_degradation = std::stoi(item_degradation) == 1;
+            }
+            catch (...) {
+                API::get()->log_error("[Plugin Config] Invalid Value: [attachments][item_degradation]");
+            }
+        }
     }
     else {
         API::get()->log_error("[Plugin Config] Missing [attachments] config section");
@@ -80,11 +91,12 @@ bool OuterWorldsPluginConfig::save_plugin_config() {
     mINI::INIFile mod_config_file(config_filename);
     mINI::INIStructure mod_config;
 
-    mod_config["general"]["use_laser_pointer"] = std::to_string(m_cfg_option_use_laser_pointer).c_str();
+    mod_config["general"]["auto_pause_daytime"] = std::to_string(m_cfg_option_auto_pause_daytime).c_str();
 
     mod_config["attachments"]["ammo_readout"] = std::to_string(m_cfg_option_attach_ammo_readout).c_str();
     mod_config["attachments"]["character_overview"] = std::to_string(m_cfg_option_attach_character_overview).c_str();
     mod_config["attachments"]["compass"] = std::to_string(m_cfg_option_attach_compass).c_str();
+    mod_config["attachments"]["item_degradation"] = std::to_string(m_cfg_option_attach_item_degradation).c_str();
 
     return mod_config_file.generate(mod_config, true);
 }

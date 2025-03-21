@@ -1,6 +1,9 @@
 
 
 ABP_DynamicTOD_C
+UCloudComponent::SetAmbientSettings
+
+
 UGlobalMeleeData
 UGlobalUIData
 AReactiveEnvironmentActor

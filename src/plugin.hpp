@@ -95,7 +95,7 @@ public:
     void on_post_render_vr_framework_dx12(ID3D12GraphicsCommandList* command_list, ID3D12Resource* rt, D3D12_CPU_DESCRIPTOR_HANDLE* rtv) override;
 
     // -------------------------------------------------------------------------------------------------------
-    const char* MOD_VERSION = "0.0.1";
+    const char* MOD_VERSION = "0.1.0";
 
     // VR HUD
     OuterWorldsVRHUD* m_vr_hud{ nullptr };
@@ -117,8 +117,7 @@ public:
     };
     SDK::ECheckBranches m_reusable_branches{};
     bool m_xinput_cb_processed{ false };
-    bool m_static_load_object{ false };
-    SDK::UObject* m_ps{ nullptr };
+    int m_toggle_native_fix_counter{ -1 };
 
     // state
     MemoProperty<SDK::APawn*> m_pawn{ nullptr, nullptr };
@@ -129,6 +128,7 @@ public:
     MemoBoolean m_is_interactable_in_range{ false };
     MemoBoolean m_is_conversation_camera_active{ false };
     MemoBoolean m_is_crouched{ false };
+    bool m_is_paused_daytime{ false };
 
     bool m_wirsts_attached{ false };
     bool m_arms_wirsts_attached{ false };
@@ -139,16 +139,16 @@ public:
 
     // controls
     MemoInput m_gamepad_btn_a{ XINPUT_GAMEPAD_A, "BTN_A" };
+    MemoDualInput m_gamepad_left_thumb{ XINPUT_GAMEPAD_LEFT_THUMB, "LEFT_THUMB" };
 
     // ImGui
     HWND m_wnd{};
     bool m_imgui_initialized{ false };
     bool m_was_rendering_desktop{ false };
-    bool m_ui_option_show_debug_view{ true };
+    bool m_ui_option_show_debug_view{ false };
 
     // debug
     const int CB_DURATION_SAMPLE_RATE = 100;
-    //bool m_ui_option_show_debug_view{ false };
     int m_cb_calls_count{ 0 };
     int m_ui_xinput_duration{ 0 }; // [microseconds]
     int m_ui_pre_engine_tick_duration{ 0 }; // [microseconds]
@@ -157,12 +157,15 @@ public:
 
     void prepare_pointers();
     bool prepare_state(const UEVR_VRData* vr);
-    //void preload_assets();
     void handle_hud();
     void handle_weapon_change();
     void handle_level_change(const UEVR_VRData* vr);
     void handle_controller_input(XINPUT_STATE* state, const UEVR_VRData* vr);
     void handle_crouch(const UEVR_VRData* vr);
+    void handle_mod_events();
+    void pause_daytime(bool pause);
+    void cycle_native_fix();
+    void handle_native_fix(const UEVR_VRData* vr);
     void fix_weapon_materials();
     void fix_player_character_materials();
     void fix_player_highlighter();
@@ -181,7 +184,6 @@ public:
     void set_arms_mesh_visibility(bool value);
     void set_personality();
     void reset_height(const UEVR_VRData* vr, float offset_y = 0.0f);
-    std::string get_test_string();
     void update_character_animation(float delta);
     void handle_vr_view(const UEVR_VRData* vr);
     void update_camera(const UEVR_VRData* vr);

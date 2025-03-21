@@ -1,10 +1,11 @@
 #pragma once
 
+using namespace uevr;
+
 typedef enum ModEvent {
     MOD_EVENT_VR_HUD_INITIALIZE,
+    MOD_EVENT_ENABLE_WORLD_RENDERING
 } ModEvent;
-
-using namespace uevr;
 
 template<class T>
 struct MemoProperty
@@ -162,7 +163,7 @@ struct MemoDualInput : public MemoInput
     // is used as a timer to check long vs short presses
     std::chrono::steady_clock::time_point press_time;
 
-    const float m_min_long_press_duration{ 0.5f };
+    float m_min_long_press_duration{ 0.5f };
 
     bool is_counting{ false };
     float press_duration{ 0.f };
@@ -174,7 +175,7 @@ struct MemoDualInput : public MemoInput
     }
 
     void set_and_mute_state(XINPUT_STATE* state) {
-        MemoDualInput::set(state);
+        MemoDualInput::set_state(state);
         MemoInput::mute_state(state);
     }
 
@@ -185,7 +186,7 @@ struct MemoDualInput : public MemoInput
         }
     }
 
-    void set(XINPUT_STATE* state) {
+    void set_state(XINPUT_STATE* state) {
         MemoInput::set_state(state);
 
         // button pressed down so check if it's a long press
