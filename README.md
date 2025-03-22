@@ -57,12 +57,12 @@ Unfortunatelly TOW doesn't support DLSS out of the box, but there is a way to ad
 
 *Note: There are many different ways to setup DLSS4. Feel free to do it your way.*
 
-1) Download FSR2 Bridge
+1) Download FSR2 Bridge  
 Go to Nexus Mods and download `FSRBridge - DLSS` [**link**](https://www.nexusmods.com/starfield/mods/196?tab=files).  
 Unpack it into `..\TOWSpacersChoice\Indiana\Binaries\Win64\` folder.  
 *(this is Epic store forlder location, but it should be similar for Steam)*
 
-2) Download DLSS DLL
+2) Download DLSS DLL  
 Go to TechPowerUp and download the `nvngx_dlss_310.2.zip` file [**link**](https://www.techpowerup.com/download/nvidia-dlss-dll/)  
 Unpack it into `..\TOWSpacersChoice\Indiana\Binaries\Win64\` folder.
 
