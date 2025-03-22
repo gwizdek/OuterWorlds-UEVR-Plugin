@@ -54,38 +54,38 @@ It's also advised to use DLSS *(DLSS installation is described below)*.
 DLSS Installation is optional, but highly recomended. The DLSS 4 upscaler that uses Transformer Model really shines in this game.
 Unfortunatelly TOW doesn't support DLSS out of the box, but there is a way to add it - through a FSR -> DLSS bridge.
 
-**1) Download FSR2 Bridge**  
+1) Download FSR2 Bridge
 Go to Nexus Mods and download `FSRBridge - DLSS` [**link**](https://www.nexusmods.com/starfield/mods/196?tab=files).  
 Unpack it into `..\TOWSpacersChoice\Indiana\Binaries\Win64\` folder.  
 *(this is Epic store forlder location, but it should be similar for Steam)*
 
-**2) Download DLSS DLL**  
+2) Download DLSS DLL
 Go to TechPowerUp and download the `nvngx_dlss_310.2.zip` file [**link**](https://www.techpowerup.com/download/nvidia-dlss-dll/)  
 Unpack it into `..\TOWSpacersChoice\Indiana\Binaries\Win64\` folder.
 
-**3) Use NVIDIA Profile Inspector Revamped to override DLSS settings**  
-* Download latest release from [**here**](https://github.com/xHybred/NvidiaProfileInspectorRevamped/releases)  
-* Unpack and Run `NV-Profile-Inspector-Revamped Lite\nvidiaProfileInspector.exe` file.  
-* Select Global Profile (should be selected by default)  
+3) Use NVIDIA Profile Inspector Revamped to override DLSS settings
+    * Download latest release from [**here**](https://github.com/xHybred/NvidiaProfileInspectorRevamped/releases)  
+    * Unpack and Run `NV-Profile-Inspector-Revamped Lite\nvidiaProfileInspector.exe` file.  
+    * Select Global Profile (should be selected by default)  
 
-Inside `DLSS Overrides` section set:  
-* SR: Latest DLL: `On`
-* SR: Preset: `J`  
-(*preset `J` is the sharpest one*)  
+    Inside `DLSS Overrides` section set:  
+    * SR: Latest DLL: `On`
+    * SR: Preset: `J`  
+    (*preset `J` is the sharpest one*)  
 
-Inside `Clarity and Detail` section set:  
-* NVSharpen Mode: `On`
-* NVSharpen Value: `1.00`
+    Inside `Clarity and Detail` section set:  
+    * NVSharpen Mode: `On`
+    * NVSharpen Value: `1.00`
 
-**IMPORTANT:** Press `Apply Changes` button in top right corrner of the application
+    **IMPORTANT:** Press `Apply Changes` button in top right corrner of the application
 
 
-**4) Optional (recommended) Enable DLSS Onscreen Indicator**  
+4) Optional (recommended) Enable DLSS Onscreen Indicator
 Onscreen indicator will show a text message on your monitor screen when DLSS is in use. We can use it to confirm that we succesfully installed the DLSS Bridge.  
 There are two `.reg` files located inside downloaded NVIDIA Profile Inspector Revamped `.zip` file: `Enable DLSS UI.reg` and `Disable DLSS UI.reg`. Use the first one to enable the indicator. 
 
-**5) Enable DLSS in the game**  
-Start the game. Go to Settings and select upscaling level (recomended: Performance) in `FidelityFX Super Resolution 2 (FSR 2)` option. Press `Apply`  
+5) Enable DLSS in the game
+Start the game. Go to Settings and select upscaling level (recomended: Performance) in `FidelityFX Super Resolution 2 (FSR 2)` option. Press `Apply`.  
 The game still thinks that is using FSR2, but at this point it should be using DLSS.  
 If everything is set up correctly and the Onscreen Indicator is turned on, you should be able to see a text message on your monitor (bottom/left corrner).
 
