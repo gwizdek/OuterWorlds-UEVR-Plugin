@@ -1,0 +1,2 @@
+r.VolumetricCloud.EnableAtmosphericLightsSampling 0
+r.DepthOfFieldQuality 0
