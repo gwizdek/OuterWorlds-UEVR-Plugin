@@ -36,7 +36,8 @@ The plugin doesn't change any of the game controller bindings but it adds one:
 This plugin is meant to be used with UEVR Native Stereo Fix feature and it requires latest nightly to work.
 It's also advised to use DLSS *(DLSS installation is described below)*.
 
-1) Get and Install UEVR nightly from [**HERE**](https://github.com/praydog/UEVR-nightly/releases).
+1) Get and Install UEVR nightly from [**HERE**](https://github.com/praydog/UEVR-nightly/releases).  
+    *(I'm running it with nightly 1042, but some say, it's not the most stable version and preffer 1040)*
 2) Remove your current Outer Worlds profile folder if exists:
     * Epic: `C:\Users\{username}\AppData\Roaming\UnrealVRMod\IndianaEpicGameStore-Win64-Shipping`
     * Steam: `C:\Users\{username}\AppData\Roaming\UnrealVRMod\Indiana-Win64-Shipping`
