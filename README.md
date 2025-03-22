@@ -7,7 +7,7 @@ This plugin comes in two versions, depending on where you bought the game:
 * Epic Game Store
 * Steam
 
-**Read instalation instructions!**
+**Read installation instructions!**
 
 ## Features
 * 6DOF guns
