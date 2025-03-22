@@ -83,11 +83,11 @@ Unpack it into `..\TOWSpacersChoice\Indiana\Binaries\Win64\` folder.
     **IMPORTANT:** Press `Apply Changes` button in top right corrner of the application
 
 
-4) Optional (recommended) Enable DLSS Onscreen Indicator
+4) Optional (recommended) Enable DLSS Onscreen Indicator  
 Onscreen indicator will show a text message on your monitor screen when DLSS is in use. We can use it to confirm that we succesfully installed the DLSS Bridge.  
 There are two `.reg` files located inside downloaded NVIDIA Profile Inspector Revamped `.zip` file: `Enable DLSS UI.reg` and `Disable DLSS UI.reg`. Use the first one to enable the indicator. 
 
-5) Enable DLSS in the game
+5) Enable DLSS in the game  
 Start the game. Go to Settings and select upscaling level (recomended: Performance) in `FidelityFX Super Resolution 2 (FSR 2)` option. Press `Apply`.  
 The game still thinks that is using FSR2, but at this point it should be using DLSS.  
 If everything is set up correctly and the Onscreen Indicator is turned on, you should be able to see a text message on your monitor (bottom/left corrner).
@@ -96,6 +96,7 @@ If everything is set up correctly and the Onscreen Indicator is turned on, you s
 ## Eye flicker fix
 The latest changes made by praydog to UEVR brought better image quality in Native Stereo Rendering Method. This feature is enabled by using `Native Stereo Fix -> Enabled` checkbox. The feature is not perfect yet and in some games it causes side effects.  
 In regards to Outer Worlds that side effect is image flickering seen in one of the eyes. This is related to the game engine recalculating lighting conditions for given time of day.  
+
 The issue can be mitigated in two ways:  
 * Disable and enable Native Stereo Fix or set rendering method to Synchronized Sequential and back to Native Stereo
 * Stop the game from reevaluating lighting conditions  
@@ -103,7 +104,7 @@ The issue can be mitigated in two ways:
 The first option works only for a short period of time and then you need to do it again  
 The second option effectively stops progress of day time
 
-The profile provides both mitigation methods:
+The profile provides both mitigation methods:  
 * If you're not using `Pause Daytime` feature and the screen starts to flicker, press and hold `Left Thumbstick Button` for >3s to remove eye flicker
 * If you want to test `Pause Daytime` go to the plugin overlay window (an extra window visible next to UEVR overlay window) and press `Pause Daytime` button.
 This will pause daytime until you change game location or reload the game (you can wait up to the moment when the lighting conditions suit you and pause daytime then).  
