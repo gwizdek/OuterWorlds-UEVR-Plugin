@@ -55,6 +55,8 @@ It's also advised to use DLSS *(DLSS installation is described below)*.
 DLSS Installation is optional, but highly recomended. The DLSS 4 upscaler that uses Transformer Model really shines in this game.
 Unfortunatelly TOW doesn't support DLSS out of the box, but there is a way to add it - through a FSR -> DLSS bridge.
 
+*Note: There are many different ways to setup DLSS4. Feel free to do it your way.*
+
 1) Download FSR2 Bridge
 Go to Nexus Mods and download `FSRBridge - DLSS` [**link**](https://www.nexusmods.com/starfield/mods/196?tab=files).  
 Unpack it into `..\TOWSpacersChoice\Indiana\Binaries\Win64\` folder.  
