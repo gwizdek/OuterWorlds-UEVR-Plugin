@@ -14,7 +14,7 @@
 #include "indiana/SDK/GameplayTags_classes.hpp"
 #include "vr_attached_widget.hpp"
 
-#define STATIC_LOAD_ASSET_OFFSET 0x1C67740
+#define STATIC_LOAD_ASSET_OFFSET 0x1C03560
 
 using namespace SDK;
 
