@@ -74,13 +74,15 @@ Unpack it into `..\TOWSpacersChoice\Indiana\Binaries\Win64\` folder.
     Inside `DLSS Overrides` section set:  
     * SR: Latest DLL: `On`
     * SR: Preset: `J`  
-    (*preset `J` is the sharpest one*)  
+    (*preset `J` is the sharpest one*)
+
+   ![image](https://github.com/user-attachments/assets/d09ce57b-8b5e-4913-8b58-dc6693749ad9)  
 
     Inside `Clarity and Detail` section set:  
     * NVSharpen Mode: `On`
     * NVSharpen Value: `1.00`
 
-   ![image](https://github.com/user-attachments/assets/21d7f622-0667-4a88-b89d-5b1467ca2ec2)  
+   ![image](https://github.com/user-attachments/assets/c56796fe-dbba-4d7a-b69d-93df5d2870b9)  
     **IMPORTANT:** Press `Apply Changes` button in top right corrner of the application  
 
 
