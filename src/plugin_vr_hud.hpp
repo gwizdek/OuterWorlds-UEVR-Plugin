@@ -52,6 +52,7 @@ private:
     SDK::AActor* m_hmd_actor{ nullptr };
     SDK::AActor* m_right_hand_attachments_actor{ nullptr };
     SDK::AActor* m_left_hand_attachments_actor{ nullptr };
+    SDK::AActor* m_weapon_scope_actor{ nullptr };
     SDK::TArray<SDK::AActor*> m_actors_to_ignore{};
 
     // motion controllers
@@ -63,7 +64,11 @@ private:
 
     // scene components
     SDK::USceneComponent* m_hmd_component{ nullptr };
-    SDK::USceneComponent* m_weapon_offset_component{ nullptr };
+    SDK::USceneComponent* m_particle_pointer_offset_component{ nullptr };
+    SDK::USceneCaptureComponent2D* m_scope_view_capture_component{ nullptr };
+
+    // mesh components
+    SDK::UStaticMeshComponent* m_scope_component{ nullptr };
 
     // widget components
     VRAttachedWidget* m_ammo_readout{ nullptr };
@@ -133,9 +138,10 @@ public:
             !attach_character_overview() ||
             !attach_item_degradation() ||
             !attach_compass() ||
-            !spawn_particle_pointer()
+            !spawn_particle_pointer() ||
+            !spawn_scope_mesh()
             ) {
-            //destroy_actors();
+            destroy_actors();
             m_hud_state = VR_HUD_ERROR;
             return false;
         }
@@ -158,9 +164,9 @@ public:
         if (mod_events->contains(MOD_EVENT_VR_HUD_INITIALIZE)) {
             m_hud_state = OuterWorldsVRHUDState::VR_HUD_PENDING_INIT;
 
-            if (initialize_hud()) {
-                mod_events->extract(MOD_EVENT_VR_HUD_INITIALIZE);
-            };
+            // try to initialize VR HUD once
+            initialize_hud();
+            mod_events->extract(MOD_EVENT_VR_HUD_INITIALIZE);
         }
     }
 
@@ -186,13 +192,16 @@ public:
         m_right_hand_attachments_actor = nullptr;
         m_left_hand_attachments_actor = nullptr;
         m_hmd_actor = nullptr;
+        m_weapon_scope_actor = nullptr;
 
         // components
         m_rh_controller_component = nullptr;
         m_lh_controller_component = nullptr;
         m_hmd_component = nullptr;
-        m_weapon_offset_component = nullptr;
+        m_particle_pointer_offset_component = nullptr;
         m_particle_pointer_component = nullptr;
+        m_scope_component = nullptr;
+        m_scope_view_capture_component = nullptr;
 
         // widgets
         m_ammo_readout = nullptr;
@@ -217,6 +226,11 @@ public:
         if (SDK::UKismetSystemLibrary::IsValid(m_hmd_actor) && m_hmd_actor->IsA(SDK::AActor::StaticClass())) {
             m_hmd_actor->K2_DestroyActor();
             API::get()->log_warn("[VR HUD] :: HMD Actor destroyed");
+        }
+
+        if (SDK::UKismetSystemLibrary::IsValid(m_hmd_actor) && m_weapon_scope_actor->IsA(SDK::AActor::StaticClass())) {
+            m_weapon_scope_actor->K2_DestroyActor();
+            API::get()->log_warn("[VR HUD] :: Weapon Scope Actor destroyed");
         }
 
         if (_clear_pointers) {
@@ -264,7 +278,8 @@ public:
             m_player_character == nullptr ||
             m_right_hand_attachments_actor != nullptr ||
             m_left_hand_attachments_actor != nullptr ||
-            m_hmd_actor != nullptr
+            m_hmd_actor != nullptr ||
+            m_weapon_scope_actor != nullptr
             ) {
             log_error("Can't prepare attachment points. Pointers");
             return false;
@@ -308,19 +323,40 @@ public:
         m_right_hand_attachments_actor->FinishAddComponent(m_rh_controller_component, false, transform);
         API::get()->log_warn("[VR HUD] Finished adding RH component");
 
-        // weapon offset component
-        m_weapon_offset_component = static_cast<SDK::USceneComponent*>(
+        // particle pointer offset component
+        m_particle_pointer_offset_component = static_cast<SDK::USceneComponent*>(
             m_right_hand_attachments_actor->AddComponentByClass(SDK::USceneComponent::StaticClass(), false, transform, true)
             );
-        if (m_weapon_offset_component == nullptr) {
-            log_error("Failed to add Weapon Offset component");
+        if (m_particle_pointer_offset_component == nullptr) {
+            log_error("Failed to add Particle Pointer Offset component");
             return false;
         }
-        m_right_hand_attachments_actor->FinishAddComponent(m_weapon_offset_component, false, transform);
-        API::get()->log_warn("[VR HUD] Added Weapon Offset component");
+        m_right_hand_attachments_actor->FinishAddComponent(m_particle_pointer_offset_component, false, transform);
+        API::get()->log_warn("[VR HUD] Added Particle Pointer Offset component");
 
-        if (!m_weapon_offset_component->K2_AttachTo(m_rh_controller_component, SDK::UKismetStringLibrary::Conv_StringToName(L"None"), SDK::EAttachLocation::KeepRelativeOffset, false)) {
-            API::get()->log_error("[VR HUD] Failed to Attach Weapon Offset Component");
+        if (!m_particle_pointer_offset_component->K2_AttachTo(m_rh_controller_component, SDK::UKismetStringLibrary::Conv_StringToName(L"None"), SDK::EAttachLocation::KeepRelativeOffset, false)) {
+            API::get()->log_error("[VR HUD] Failed to Attach Particle Pointer Offset Component");
+        }
+
+        SDK::FTransform zero_transform{
+            .Rotation = {1.f, 0.f, 0.f, 1.f},
+            .Translation = {0.f, 0.f, 0.f},
+            .Scale3D = {1.f, 1.f, 1.f}
+        };
+
+        // scope component
+        m_scope_component = static_cast<SDK::UStaticMeshComponent*>(
+            m_right_hand_attachments_actor->AddComponentByClass(SDK::UStaticMeshComponent::StaticClass(), false, zero_transform, true)
+            );
+        if (m_scope_component == nullptr) {
+            log_error("Failed to add Scope component");
+            return false;
+        }
+        m_right_hand_attachments_actor->FinishAddComponent(m_scope_component, false, zero_transform);
+        API::get()->log_warn("[VR HUD] Added Scope component");
+
+        if (!m_scope_component->K2_AttachTo(m_rh_controller_component, SDK::UKismetStringLibrary::Conv_StringToName(L"None"), SDK::EAttachLocation::KeepRelativeOffset, false)) {
+            API::get()->log_error("[VR HUD] Failed to Attach Scope Component");
         }
 
         // --------------------------------------------------------------------
@@ -429,14 +465,28 @@ public:
         m_particle_pointer_offset = offset;
     }
 
+    void set_scope_offset(SDK::FVector offset) {
+        static SDK::FHitResult h_result{};
+        if (m_scope_component != nullptr) {
+            m_scope_component->K2_SetRelativeLocation(offset, false, &h_result, false);
+        }
+    }
+
+    void set_scope_visibility(bool visible) {
+        if (m_scope_component != nullptr) {
+            m_scope_component->SetVisibility(visible, true);
+            m_scope_component->SetHiddenInGame(!visible, true);
+        }
+    }
+
     void update_particle_pointer() {
         try {
             static SDK::FHitResult h_result{};
             if (m_world != nullptr && m_rh_controller_component != nullptr && m_player_character != nullptr && get_hud_state() == OuterWorldsVRHUDState::VR_HUD_SUCCESS) {
 
-                m_weapon_offset_component->K2_SetRelativeLocation(m_particle_pointer_offset, false, &h_result, false);
-                auto start = m_weapon_offset_component->K2_GetComponentLocation();
-                auto rot = m_weapon_offset_component->K2_GetComponentRotation();
+                m_particle_pointer_offset_component->K2_SetRelativeLocation(m_particle_pointer_offset, false, &h_result, false);
+                auto start = m_particle_pointer_offset_component->K2_GetComponentLocation();
+                auto rot = m_particle_pointer_offset_component->K2_GetComponentRotation();
                 auto end = start + (SDK::UKismetMathLibrary::Conv_RotatorToVector(rot) * 400.f);
                 SDK::FLinearColor color{ 1.0f, 1.0f, 1.0f, 1.0f };
 
@@ -494,7 +544,7 @@ public:
             auto asset_class = API::get()->find_uobject<API::UClass>(L"Class /Script/Engine.ParticleSystem");
             std::wstring resource_name{ L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball.PS_Plasma_Ball" };
 
-            if (!asset_class) {
+            if (asset_class == nullptr) {
                 API::get()->log_error("[VR HUD] Failed to find ParticleSystem class");
                 return false;
             }
@@ -512,20 +562,15 @@ public:
 
             SDK::UParticleSystem* ps{ nullptr };
 
-            API::get()->log_warn("[VR HUD] Searching for ParticleSystem");
-            auto class_ptr = API::get()->find_uobject<API::UClass>(L"Class /Script/Engine.ParticleSystem");
-            if (class_ptr != nullptr) {
-                API::get()->log_warn("[VR HUD] ParticleSystem Class found");
-                std::vector<API::UObject*> matching_objects = class_ptr->get_objects_matching<API::UObject>();
+            std::vector<API::UObject*> matching_objects = asset_class->get_objects_matching<API::UObject>();
 
-                for (size_t i = 0; i < matching_objects.size(); i++) {
-                    auto obj = (SDK::UObject*)matching_objects[i];
+            for (size_t i = 0; i < matching_objects.size(); i++) {
+                auto obj = (SDK::UObject*)matching_objects[i];
 
-                    if (obj->IsA(SDK::UParticleSystem::StaticClass())) {
-                        if (obj->GetFullName().ends_with("PS_Plasma_Ball.PS_Plasma_Ball")) {
-                            API::get()->log_warn("[VR HUD] ParticleSystem found: %s", obj->GetFullName().c_str());
-                            ps = static_cast<SDK::UParticleSystem*>(obj);
-                        }
+                if (obj->IsA(SDK::UParticleSystem::StaticClass())) {
+                    if (obj->GetFullName().ends_with("PS_Plasma_Ball.PS_Plasma_Ball")) {
+                        API::get()->log_warn("[VR HUD] ParticleSystem found: %s", obj->GetFullName().c_str());
+                        ps = static_cast<SDK::UParticleSystem*>(obj);
                     }
                 }
             }
@@ -560,6 +605,137 @@ public:
             API::get()->log_error("[VR HUD][spawn_particle_pointer] Exception");
             return false;
         }
+    }
+
+    bool spawn_scope_mesh() {
+        try {
+            API::get()->log_warn("[VR HUD][spawn_scope_mesh] Spawning Scope - Begin");
+
+            if (m_scope_component == nullptr) {
+                API::get()->log_warn("[VR HUD][spawn_scope_mesh] No Scope Component attached");
+                return false;
+            }
+
+            // load cylinder mesh
+            auto asset_class = API::get()->find_uobject<API::UClass>(L"Class /Script/Engine.StaticMesh");
+            std::string resource_name{ "StaticMesh /Engine/BasicShapes/Cylinder.Cylinder" };
+
+            if (!asset_class) {
+                API::get()->log_error("[VR HUD][spawn_scope_mesh] Failed to find StaticMesh class");
+                return false;
+            }
+
+            //auto mod = utility::get_executable();
+            //auto static_load_asset_func_addr = (uintptr_t)mod + STATIC_LOAD_ASSET_OFFSET;
+            //auto func = (StaticLoadObject_t)static_load_asset_func_addr;
+
+            //SDK::UObject* asset = func(asset_class, nullptr, resource_name.c_str(), nullptr, 0, nullptr, true, nullptr);
+            //if (!asset) {
+            //    API::get()->log_warn("[VR HUD] Failed to load Cylinder");
+            //    return false;
+            //}
+            //API::get()->log_warn("[VR HUD] Loaded Cylinder!");
+
+            SDK::UStaticMesh* cylinder_mesh{ nullptr };
+
+            std::vector<SDK::UStaticMesh*> matching_objects = asset_class->get_objects_matching<SDK::UStaticMesh>();
+
+            for (size_t i = 0; i < matching_objects.size(); i++) {
+                if (matching_objects[i]->GetFullName().ends_with("Cylinder.Cylinder")) {
+                    API::get()->log_warn("[VR HUD][spawn_scope_mesh] Cylinder Mesh Found: %s", matching_objects[i]->GetFullName().c_str());
+                    cylinder_mesh = matching_objects[i];
+                }
+            }
+
+            if (cylinder_mesh == nullptr) {
+                API::get()->log_error("[VR HUD][spawn_scope_mesh] Couldn't find Cylinder Mesh");
+                return false;
+            }
+
+            SDK::FHitResult h_result{};
+            SDK::FTransform zero_transform{
+                .Rotation = {0.f, 0.f, 0.f, 1.f},
+                .Translation = {0.f, 0.f, 0.f},
+                .Scale3D = {1.f, 1.f, 1.f}
+            };
+
+            m_scope_component->K2_SetRelativeTransform(zero_transform, false, &h_result, false);
+            //m_scope_component->K2_SetRelativeLocation({ 0.f, 0.f, 0.f }, false, &h_result, false);
+            //m_scope_component->K2_SetRelativeRotation({ 0.f, 0.f, 0.f }, false, &h_result, false);
+            //m_scope_component->SetRelativeScale3D({ 1.0f, 1.0f, 1.0f });
+
+            m_scope_component->SetStaticMesh(cylinder_mesh);
+            m_scope_component->SetVisibility(true, true);
+            m_scope_component->SetHiddenInGame(false, false);
+            m_scope_component->SetCollisionEnabled(SDK::ECollisionEnabled::NoCollision);
+
+            auto emissive_material = API::get()->find_uobject<SDK::UMaterial>(
+                L"Material /Engine/EngineMaterials/EmissiveMeshMaterial.EmissiveMeshMaterial"
+            );
+            /*emissive_material->BlendMode = SDK::EBlendMode::BLEND_Opaque;
+            emissive_material->TwoSided = false;*/
+
+            SDK::FLinearColor zero_color{ 0.f ,0.f, 0.f, 0.f };
+            auto render_target = SDK::UKismetRenderingLibrary::CreateRenderTarget2D(SDK::UWorld::GetWorld(), 1024, 1024, SDK::ETextureRenderTargetFormat::RTF_RGBA16f, zero_color, false);
+
+            if (render_target == nullptr) {
+                API::get()->log_error("[VR HUD][spawn_scope_mesh] Failed to create Render Target");
+                return false;
+            }
+
+            auto dynamic_material = m_scope_component->CreateDynamicMaterialInstance(0, emissive_material, SDK::UKismetStringLibrary::Conv_StringToName(L"ScopeMaterial"));
+            dynamic_material->BasePropertyOverrides.bOverride_BlendMode = true;
+            dynamic_material->BasePropertyOverrides.BlendMode = SDK::EBlendMode::BLEND_Opaque;
+            dynamic_material->BasePropertyOverrides.bOverride_TwoSided = true;
+            dynamic_material->BasePropertyOverrides.TwoSided = false;
+            dynamic_material->SetVectorParameterValue(SDK::UKismetStringLibrary::Conv_StringToName(L"Color"), { 1.f, 1.f, 1.f, 1.f });
+            dynamic_material->SetTextureParameterValue(SDK::UKismetStringLibrary::Conv_StringToName(L"LinearColor"), render_target);
+            API::get()->log_warn("[VR HUD][spawn_scope_mesh] Set Dynamic Material");
+
+            
+
+
+
+            // scope view component
+            m_scope_view_capture_component = static_cast<SDK::USceneCaptureComponent2D*>(
+                m_right_hand_attachments_actor->AddComponentByClass(SDK::USceneCaptureComponent2D::StaticClass(), false, zero_transform, true)
+            );
+            if (m_scope_view_capture_component == nullptr) {
+                log_error("[VR HUD][spawn_scope_mesh]Failed to add Scope View component");
+                return false;
+            }
+            m_right_hand_attachments_actor->FinishAddComponent(m_scope_view_capture_component, false, zero_transform);
+            API::get()->log_warn("[VR HUD][spawn_scope_mesh] Added Scope View component");
+
+            m_scope_view_capture_component->K2_AttachToComponent(
+                m_particle_pointer_offset_component,
+                SDK::UKismetStringLibrary::Conv_StringToName(L"None"),
+                SDK::EAttachmentRule::SnapToTarget,
+                SDK::EAttachmentRule::SnapToTarget,
+                SDK::EAttachmentRule::KeepRelative,
+                true
+            );
+
+            //if (!m_scope_view_capture_component->K2_AttachTo(m_particle_pointer_offset_component, SDK::UKismetStringLibrary::Conv_StringToName(L"None"), SDK::EAttachLocation::KeepRelativeOffset, false)) {
+            //    API::get()->log_error("[VR HUD][spawn_scope_mesh] Failed to Attach Scope View Component");
+            //}
+
+            //m_scope_view_capture_component->PrimitiveRenderMode
+            //m_scope_view_capture_component->CustomProjectionMatrix
+            m_scope_view_capture_component->TextureTarget = render_target;
+            m_scope_view_capture_component->FOVAngle = 20.f;
+            m_scope_view_capture_component->SetVisibility(true, true);
+
+            //m_scope_component->K2_SetRelativeRotation({ 0.f, 0.f, 0.f }, false, &h_result, false);
+
+            API::get()->log_warn("[VR HUD][spawn_scope_mesh] Spawning Scope - End");
+            return true;
+        }
+        catch (...) {
+            API::get()->log_error("[VR HUD][spawn_scope_mesh] Exception");
+            return false;
+        }
+        return true;
     }
 
     // -------------------------------------------------------------------------------------

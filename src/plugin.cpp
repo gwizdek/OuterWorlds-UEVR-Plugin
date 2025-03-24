@@ -225,6 +225,7 @@ bool OuterWorldsPlugin::prepare_state(const UEVR_VRData* vr) {
         }
 
         if (m_ui != nullptr) {
+
             // ledger
             auto ledger_widget = m_ui->GetUserWidget(&m_reusable_branches, m_ui->LedgerWidgetClass);
             m_ui_ledger_open_state.set_value(m_reusable_branches == SDK::ECheckBranches::Valid ? ledger_widget->GetOpenState() : SDK::EWidgetOpenState::Minimized);
@@ -729,6 +730,34 @@ void OuterWorldsPlugin::fix_weapon_ironsights_offset() {
             m_vr_hud->set_particle_pointer_offset({ 0.f, 0.f, offset_transform.Translation.Z });
 
             API::UObjectHook::get_or_add_motion_controller_state((API::UObject*)m_player_character->FPVCamera)->set_location_offset(&offset);
+
+            auto weapon_mode = m_equipped_weapon.value->GetCurrentMode();
+
+            //
+            //if (weapon_mode->IsA(SDK::URangedMode::StaticClass())) {
+            if (SDK::UKismetMathLibrary::ClassIsChildOf(weapon_mode->Class, SDK::URangedMode::StaticClass())) {
+                
+                static_cast<SDK::URangedMode*>(weapon_mode)->FineAimFovAdjustment = 0.f;
+                static_cast<SDK::URangedMode*>(weapon_mode)->FineAimLookStickRateMultiplier = 0.00001f;
+
+                if (static_cast<SDK::URangedMode*>(weapon_mode)->HasScope()) {
+                    m_vr_hud->set_scope_visibility(true);
+                    if (m_equipped_weapon.value->SkeletalMeshComponent->DoesSocketExist(SDK::UKismetStringLibrary::Conv_StringToName(L"Sight_Socket"))) {
+                        // get scope transform
+                        offset_transform = m_equipped_weapon.value->SkeletalMeshComponent->GetSocketTransform(
+                            SDK::UKismetStringLibrary::Conv_StringToName(L"Sight_Socket"), SDK::ERelativeTransformSpace::RTS_Component
+                        );
+                        m_vr_hud->set_scope_offset({ 0.f, 0.f, offset_transform.Translation.Z });
+                    }
+                }
+                else {
+                    m_vr_hud->set_scope_visibility(false);
+                }
+            }
+            else {
+                m_vr_hud->set_scope_visibility(false);
+            }
+
         }
     }
     catch (...) {
