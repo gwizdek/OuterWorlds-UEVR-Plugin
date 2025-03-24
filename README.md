@@ -52,7 +52,7 @@ It's also advised to use DLSS *(DLSS installation is described below)*.
 6) Open `Game Settings -> UI -> HUD section`, and set `Aiming Reticle` option to `OFF` - you won't need the reticle anymore
 
 ## DLSS Installation
-DLSS Installation is optional, but highly recomended. The DLSS 4 upscaler that uses Transformer Model really shines in this game.
+DLSS Installation is optional, but highly recommended. The DLSS 4 upscaler that uses Transformer Model really shines in this game.
 Unfortunatelly TOW doesn't support DLSS out of the box, but there is a way to add it - through a FSR -> DLSS bridge.
 
 *Note: There are many different ways to setup DLSS4. Feel free to do it your way.*
@@ -91,7 +91,7 @@ Onscreen indicator will show a text message on your monitor screen when DLSS is 
 There are two `.reg` files located inside downloaded NVIDIA Profile Inspector Revamped `.zip` file: `Enable DLSS UI.reg` and `Disable DLSS UI.reg`. Use the first one to enable the indicator. 
 
 6) Enable DLSS in the game  
-Start the game. Go to Settings and select upscaling level (recomended: Performance) in `FidelityFX Super Resolution 2 (FSR 2)` option. Press `Apply`.  
+Start the game. Go to Settings and select upscaling level (recommended: Performance) in `FidelityFX Super Resolution 2 (FSR 2)` option. Press `Apply`.  
 The game still thinks that is using FSR2, but at this point it should be using DLSS.  
 If everything is set up correctly and the Onscreen Indicator is turned on, you should be able to see a text message on your monitor (bottom/left corner).  
 ![image](https://github.com/user-attachments/assets/45971cdc-d1ff-4681-99c2-0fa95c7367b8)  
