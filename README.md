@@ -69,7 +69,7 @@ Unpack it into `..\TOWSpacersChoice\Indiana\Binaries\Win64\` folder.
 3) Use NVIDIA Profile Inspector Revamped to override DLSS settings
     * Download latest release from [**here**](https://github.com/xHybred/NvidiaProfileInspectorRevamped/releases)  
     * Unpack and Run `NV-Profile-Inspector-Revamped Lite\nvidiaProfileInspector.exe` file.  
-    * Select Global Profile (should be selected by default)  
+    * Select Global Profile: `_GLOBAL_DRIVER_PROFILE (Base Profile)`  
 
     Inside `DLSS Overrides` section set:  
     * SR: Latest DLL: `On`
@@ -80,17 +80,19 @@ Unpack it into `..\TOWSpacersChoice\Indiana\Binaries\Win64\` folder.
     * NVSharpen Mode: `On`
     * NVSharpen Value: `1.00`
 
-    **IMPORTANT:** Press `Apply Changes` button in top right corrner of the application
+   ![image](https://github.com/user-attachments/assets/21d7f622-0667-4a88-b89d-5b1467ca2ec2)  
+    **IMPORTANT:** Press `Apply Changes` button in top right corrner of the application  
 
 
-4) Optional (recommended) Enable DLSS Onscreen Indicator  
+5) Optional (recommended) Enable DLSS Onscreen Indicator  
 Onscreen indicator will show a text message on your monitor screen when DLSS is in use. We can use it to confirm that we succesfully installed the DLSS Bridge.  
 There are two `.reg` files located inside downloaded NVIDIA Profile Inspector Revamped `.zip` file: `Enable DLSS UI.reg` and `Disable DLSS UI.reg`. Use the first one to enable the indicator. 
 
-5) Enable DLSS in the game  
+6) Enable DLSS in the game  
 Start the game. Go to Settings and select upscaling level (recomended: Performance) in `FidelityFX Super Resolution 2 (FSR 2)` option. Press `Apply`.  
 The game still thinks that is using FSR2, but at this point it should be using DLSS.  
-If everything is set up correctly and the Onscreen Indicator is turned on, you should be able to see a text message on your monitor (bottom/left corrner).
+If everything is set up correctly and the Onscreen Indicator is turned on, you should be able to see a text message on your monitor (bottom/left corrner).  
+![image](https://github.com/user-attachments/assets/45971cdc-d1ff-4681-99c2-0fa95c7367b8)  
 
 
 ## Eye flicker fix
@@ -109,7 +111,9 @@ The profile provides both mitigation methods:
 * If you want to test `Pause Daytime` go to the plugin overlay window (an extra window visible next to UEVR overlay window) and press `Pause Daytime` button.
 This will pause daytime until you change game location or reload the game (you can wait up to the moment when the lighting conditions suit you and pause daytime then).  
 If you like the feature, you can also use use `Auto Pause Daytime on Level Load` option available in plugin overlay.  
-Pressing `Save Configuration` button will save the options to hard drive.
+Pressing `Save Configuration` button will save the options to hard drive.  
+![image](https://github.com/user-attachments/assets/655da1d9-7049-4b55-8da7-981fddb335a2)  
+
 
 If you want to disable the `Pause Daytime` feature. Uncheck `Auto Pause Daytime on Level Load` and reload the game.
 
