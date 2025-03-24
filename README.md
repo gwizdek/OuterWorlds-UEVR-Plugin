@@ -93,7 +93,7 @@ There are two `.reg` files located inside downloaded NVIDIA Profile Inspector Re
 6) Enable DLSS in the game  
 Start the game. Go to Settings and select upscaling level (recomended: Performance) in `FidelityFX Super Resolution 2 (FSR 2)` option. Press `Apply`.  
 The game still thinks that is using FSR2, but at this point it should be using DLSS.  
-If everything is set up correctly and the Onscreen Indicator is turned on, you should be able to see a text message on your monitor (bottom/left corrner).  
+If everything is set up correctly and the Onscreen Indicator is turned on, you should be able to see a text message on your monitor (bottom/left corner).  
 ![image](https://github.com/user-attachments/assets/45971cdc-d1ff-4681-99c2-0fa95c7367b8)  
 
 
