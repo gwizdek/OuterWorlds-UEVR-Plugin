@@ -66,6 +66,7 @@ private:
     SDK::USceneComponent* m_hmd_component{ nullptr };
     SDK::USceneComponent* m_particle_pointer_offset_component{ nullptr };
     SDK::USceneCaptureComponent2D* m_scope_view_capture_component{ nullptr };
+    SDK::USceneCaptureComponent2D* m_flicker_fixer_capture_component{ nullptr };
 
     // mesh components
     SDK::UStaticMeshComponent* m_scope_component{ nullptr };
@@ -138,8 +139,8 @@ public:
             !attach_character_overview() ||
             !attach_item_degradation() ||
             !attach_compass() ||
-            !spawn_particle_pointer() ||
-            !spawn_scope_mesh()
+            !spawn_particle_pointer()
+            //!spawn_flicker_fixer()
             ) {
             destroy_actors();
             m_hud_state = VR_HUD_ERROR;
@@ -202,6 +203,7 @@ public:
         m_particle_pointer_component = nullptr;
         m_scope_component = nullptr;
         m_scope_view_capture_component = nullptr;
+        m_flicker_fixer_capture_component = nullptr;
 
         // widgets
         m_ammo_readout = nullptr;
@@ -338,26 +340,7 @@ public:
             API::get()->log_error("[VR HUD] Failed to Attach Particle Pointer Offset Component");
         }
 
-        SDK::FTransform zero_transform{
-            .Rotation = {1.f, 0.f, 0.f, 1.f},
-            .Translation = {0.f, 0.f, 0.f},
-            .Scale3D = {1.f, 1.f, 1.f}
-        };
 
-        // scope component
-        m_scope_component = static_cast<SDK::UStaticMeshComponent*>(
-            m_right_hand_attachments_actor->AddComponentByClass(SDK::UStaticMeshComponent::StaticClass(), false, zero_transform, true)
-            );
-        if (m_scope_component == nullptr) {
-            log_error("Failed to add Scope component");
-            return false;
-        }
-        m_right_hand_attachments_actor->FinishAddComponent(m_scope_component, false, zero_transform);
-        API::get()->log_warn("[VR HUD] Added Scope component");
-
-        if (!m_scope_component->K2_AttachTo(m_rh_controller_component, SDK::UKismetStringLibrary::Conv_StringToName(L"None"), SDK::EAttachLocation::KeepRelativeOffset, false)) {
-            API::get()->log_error("[VR HUD] Failed to Attach Scope Component");
-        }
 
         // --------------------------------------------------------------------
         // Left Hand
@@ -505,12 +488,45 @@ public:
                     m_world,
                     start,
                     end,
-                    SDK::ETraceTypeQuery::TraceTypeQuery6,
+                    //SDK::ETraceTypeQuery::TraceTypeQuery6,
+                    SDK::ETraceTypeQuery::TraceTypeQuery1,
                     true,
                     actors_to_ignore,
                     SDK::EDrawDebugTrace::None,
                     &m_reusable_result,
                     true, color, color, 0.0f);
+
+                if (m_reusable_result.Actor.Get() != nullptr) {
+                    auto traced_actor = m_reusable_result.Actor.Get();
+
+                    // take character components
+                    if (SDK::UKismetMathLibrary::ClassIsChildOf(traced_actor->Class, SDK::AIndianaCharacter::StaticClass())) {
+                        API::get()->log_warn("[VR HUD][update_particle_pointer] Found Character");
+
+                        static_cast<SDK::AIndianaCharacter*>(traced_actor)->Mesh->SetAllBodiesBelowSimulatePhysics(SDK::UKismetStringLibrary::Conv_StringToName(L"pelvis"), true, true);
+                        //static_cast<SDK::AIndianaCharacter*>(traced_actor)->Mesh->SetAllBodiesBelowPhysicsBlendWeight(SDK::UKismetStringLibrary::Conv_StringToName(L"pelvis"), 0.5f, false, false);
+                        static_cast<SDK::AIndianaCharacter*>(traced_actor)->Mesh->SetCollisionEnabled(SDK::ECollisionEnabled::QueryAndPhysics);
+                        //static_cast<SDK::AIndianaCharacter*>(traced_actor)->Mesh->SetCollisionObjectType(SDK::ECollisionChannel::ECC_WorldStatic);
+                        //static_cast<SDK::AIndianaCharacter*>(traced_actor)->Mesh->SetCollisionResponseToChannel(SDK::ECollisionChannel::ECC_PhysicsBody, SDK::ECollisionResponse::ECR_Block);
+                        //static_cast<SDK::AIndianaCharacter*>(traced_actor)->Mesh->SetCollisionResponseToAllChannels(SDK::ECollisionResponse::ECR_Block);
+
+                        for (auto child : static_cast<SDK::AIndianaCharacter*>(traced_actor)->Mesh->AttachChildren) {
+                            if (child->IsA(SDK::USkeletalMeshComponent::StaticClass())) {
+
+                                static_cast<SDK::USkeletalMeshComponent*>(child)->SetSimulatePhysics(true);
+                                //static_cast<SDK::USkeletalMeshComponent*>(child)->SetAllBodiesBelowSimulatePhysics(SDK::UKismetStringLibrary::Conv_StringToName(L"pelvis"), true, true);
+                                //static_cast<SDK::USkeletalMeshComponent*>(child)->SetAllBodiesBelowPhysicsBlendWeight(SDK::UKismetStringLibrary::Conv_StringToName(L"pelvis"), 0.5f, false, false);
+                                static_cast<SDK::USkeletalMeshComponent*>(child)->SetCollisionEnabled(SDK::ECollisionEnabled::QueryAndPhysics);
+                                //static_cast<SDK::USkeletalMeshComponent*>(child)->SetCollisionObjectType(SDK::ECollisionChannel::ECC_WorldStatic);
+                                //static_cast<SDK::USkeletalMeshComponent*>(child)->SetCollisionResponseToChannel(SDK::ECollisionChannel::ECC_PhysicsBody, SDK::ECollisionResponse::ECR_Block);
+                                static_cast<SDK::USkeletalMeshComponent*>(child)->SetCollisionResponseToAllChannels(SDK::ECollisionResponse::ECR_Block);
+                            }
+                        }
+                    }
+
+                    //API::get()->log_warn("[VR HUD][update_particle_pointer] Object: %s", m_reusable_result.Component.Get()->Name.ToString().c_str());
+                    //m_reusable_result.Component.Get()->SetSimulatePhysics(true);
+                }
 
                 if (m_particle_pointer_component != nullptr) {
                     if (m_reusable_result.Distance <= 1.f) {
@@ -607,9 +623,88 @@ public:
         }
     }
 
+    bool spawn_flicker_fixer() {
+        try {
+            API::get()->log_warn("[VR HUD][spawn_flicker_fixer] Spawning Flicker Fixer");
+            SDK::FLinearColor zero_color{ 0.f ,0.f, 0.f, 0.f };
+            auto render_target = SDK::UKismetRenderingLibrary::CreateRenderTarget2D(SDK::UWorld::GetWorld(), 16, 16, SDK::ETextureRenderTargetFormat::RTF_RGBA16f, zero_color, false);
+
+            if (render_target == nullptr) {
+                API::get()->log_error("[VR HUD][spawn_flicker_fixer] Failed to create Render Target");
+                return false;
+            }
+
+            SDK::FTransform zero_transform{
+                .Rotation = {1.f, 0.f, 0.f, 1.f},
+                .Translation = {0.f, 0.f, 0.f},
+                .Scale3D = {1.f, 1.f, 1.f}
+            };
+
+            // scope view component
+            m_flicker_fixer_capture_component = static_cast<SDK::USceneCaptureComponent2D*>(
+                m_right_hand_attachments_actor->AddComponentByClass(SDK::USceneCaptureComponent2D::StaticClass(), false, zero_transform, true)
+                );
+
+            if (m_flicker_fixer_capture_component == nullptr) {
+                log_error("[VR HUD][spawn_flicker_fixer]Failed to add Flicker Fixer Capture Component");
+                return false;
+            }
+
+            //SDK::TArray<SDK::FEngineShowFlagsSetting> show_flags{};
+            //show_flags.Data = (SDK::FEngineShowFlagsSetting*)API::FMalloc::get()->malloc(16 * sizeof(SDK::FEngineShowFlagsSetting));
+            //show_flags.NumElements = 1;
+            //show_flags.MaxElements = 1;
+            //show_flags.Data[0] = {
+            //    .ShowFlagName = SDK::FString(L"Atmosphere"),
+            //    .Enabled = false
+            //};
+
+            m_flicker_fixer_capture_component->TextureTarget = render_target;
+            //m_flicker_fixer_capture_component->ShowFlagSettings = show_flags;
+            m_flicker_fixer_capture_component->FOVAngle = 4.f;
+            //m_flicker_fixer_capture_component->bDisableFlipCopyGLES = true;
+            m_flicker_fixer_capture_component->SetVisibility(true, true);
+
+            m_right_hand_attachments_actor->FinishAddComponent(m_flicker_fixer_capture_component, false, zero_transform);
+            API::get()->log_warn("[VR HUD][spawn_flicker_fixer] Added Flicker Fixer Capture Component");
+
+            return true;
+        }
+        catch (...) {
+            API::get()->log_error("[VR HUD][spawn_flicker_fixer] Exception");
+            return false;
+        }
+    }
+
     bool spawn_scope_mesh() {
         try {
             API::get()->log_warn("[VR HUD][spawn_scope_mesh] Spawning Scope - Begin");
+
+            if (m_right_hand_attachments_actor == nullptr) {
+                log_error("[VR HUD][spawn_scope_mesh] RHand Actor not initialized");
+                return false;
+            }
+
+            SDK::FTransform zero_transform{
+                .Rotation = {1.f, 0.f, 0.f, 1.f},
+                .Translation = {0.f, 0.f, 0.f},
+                .Scale3D = {1.f, 1.f, 1.f}
+            };
+
+            // scope component
+            m_scope_component = static_cast<SDK::UStaticMeshComponent*>(
+                m_right_hand_attachments_actor->AddComponentByClass(SDK::UStaticMeshComponent::StaticClass(), false, zero_transform, true)
+                );
+            if (m_scope_component == nullptr) {
+                log_error("Failed to add Scope component");
+                return false;
+            }
+            m_right_hand_attachments_actor->FinishAddComponent(m_scope_component, false, zero_transform);
+            API::get()->log_warn("[VR HUD] Added Scope component");
+
+            if (!m_scope_component->K2_AttachTo(m_rh_controller_component, SDK::UKismetStringLibrary::Conv_StringToName(L"None"), SDK::EAttachLocation::KeepRelativeOffset, false)) {
+                API::get()->log_error("[VR HUD] Failed to Attach Scope Component");
+            }
 
             if (m_scope_component == nullptr) {
                 API::get()->log_warn("[VR HUD][spawn_scope_mesh] No Scope Component attached");
@@ -653,11 +748,6 @@ public:
             }
 
             SDK::FHitResult h_result{};
-            SDK::FTransform zero_transform{
-                .Rotation = {0.f, 0.f, 0.f, 1.f},
-                .Translation = {0.f, 0.f, 0.f},
-                .Scale3D = {1.f, 1.f, 1.f}
-            };
 
             m_scope_component->K2_SetRelativeTransform(zero_transform, false, &h_result, false);
             //m_scope_component->K2_SetRelativeLocation({ 0.f, 0.f, 0.f }, false, &h_result, false);
@@ -676,7 +766,7 @@ public:
             emissive_material->TwoSided = false;*/
 
             SDK::FLinearColor zero_color{ 0.f ,0.f, 0.f, 0.f };
-            auto render_target = SDK::UKismetRenderingLibrary::CreateRenderTarget2D(SDK::UWorld::GetWorld(), 1024, 1024, SDK::ETextureRenderTargetFormat::RTF_RGBA16f, zero_color, false);
+            auto render_target = SDK::UKismetRenderingLibrary::CreateRenderTarget2D(SDK::UWorld::GetWorld(), 16, 16, SDK::ETextureRenderTargetFormat::RTF_RGBA16f, zero_color, false);
 
             if (render_target == nullptr) {
                 API::get()->log_error("[VR HUD][spawn_scope_mesh] Failed to create Render Target");

@@ -1,5 +1,6 @@
 #include "plugin.hpp"
 #include "plugin_config.hpp"
+#include "plugin_vr_hud.hpp"
 #include "indiana/SDK/Niagara_classes.hpp"
 #include "indiana/SDK/TPV_AnimBP_classes.hpp"
 #include "indiana/SDK/FPV_AnimBP2_classes.hpp"
@@ -29,7 +30,6 @@ void OuterWorldsPlugin::on_dllmain() {
 void OuterWorldsPlugin::on_initialize() {
     // Logs to the appdata UnrealVRMod log.txt file
     API::get()->log_warn("######### UEVR Outer Worlds Plugin Initializing... #########");
-
     ImGui::CreateContext();
 
     // plugin configuration
@@ -135,8 +135,7 @@ void OuterWorldsPlugin::on_pre_engine_tick(API::UGameEngine* engine, float delta
     try {
         m_gamepad_left_thumb.add_delta(delta);
 
-        fix_weapon_materials();
-        fix_weapon_ironsights_offset();
+        fix_weapon();
         handle_native_fix(vr);
         handle_vr_view(vr);
         handle_crouch(vr);
@@ -345,20 +344,17 @@ bool OuterWorldsPlugin::modify_interactables_in_range() {
                             static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetCollisionResponseToAllChannels(SDK::ECollisionResponse::ECR_Block);
                             /*static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetCollisionResponseToChannel(SDK::ECollisionChannel::ECC_WorldStatic, SDK::ECollisionResponse::ECR_Block);
                             static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetCollisionResponseToChannel(SDK::ECollisionChannel::ECC_WorldDynamic, SDK::ECollisionResponse::ECR_Block);*/
-                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetAllMassScale(0.4f);
+                            //static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetAllMassScale(0.4f);
                             static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetSimulatePhysics(true);
-                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetEnableGravity(true);
-                            static_cast<SDK::UStaticMeshComponent*>(sm_component)->AddImpulse(SDK::FVector{ 0.f, 10.f, 10.f }, SDK::FName(), true);
+                            //static_cast<SDK::UStaticMeshComponent*>(sm_component)->SetEnableGravity(true);
+                            //static_cast<SDK::UStaticMeshComponent*>(sm_component)->AddImpulse(SDK::FVector{ 0.f, 10.f, 10.f }, SDK::FName(), true);
 
                         }
                     }
                 }
             }
-            m_is_interactable_in_range.set_value(false);
-            //return false;
         }
-        m_is_interactable_in_range.set_value(false);
-        return false;
+        return true;
     }
     catch (...) {
         API::get()->log_error("[modify_interactables_in_range] Exception");
@@ -683,7 +679,8 @@ void OuterWorldsPlugin::set_arms_mesh_visibility(bool value) {
     }
 }
 
-void OuterWorldsPlugin::fix_weapon_materials() {
+void OuterWorldsPlugin::fix_weapon() {
+    // fixing weapon materials
     try {
         if (m_equipped_weapon.value != nullptr && m_equipped_weapon.value->SkeletalMeshComponent != nullptr) {
             // main weapon components
@@ -710,16 +707,20 @@ void OuterWorldsPlugin::fix_weapon_materials() {
                     static_cast<SDK::UNiagaraComponent*>(child)->SetNiagaraVariableFloat(L"ForegroundPriorityEnabled", 0.f);
                 }
             }
-            //m_equipped_weapon.value->SkeletalMeshComponent->SetCollisionEnabled(SDK::ECollisionEnabled::QueryAndPhysics);
-            //m_equipped_weapon.value->SkeletalMeshComponent->SetCollisionResponseToAllChannels(SDK::ECollisionResponse::ECR_Block);
+            m_equipped_weapon.value->SkeletalMeshComponent->SetCollisionEnabled(SDK::ECollisionEnabled::QueryAndPhysics);
+            m_equipped_weapon.value->SkeletalMeshComponent->SetCollisionResponseToAllChannels(SDK::ECollisionResponse::ECR_Block);
+            m_equipped_weapon.value->SkeletalMeshComponent->SetCollisionObjectType(SDK::ECollisionChannel::ECC_PhysicsBody);
+            //m_equipped_weapon.value->SkeletalMeshComponent->SetSimulatePhysics(true);
+            //m_equipped_weapon.value->SkeletalMeshComponent->SetEnableGravity(false);
+            //m_equipped_weapon.value->SkeletalMeshComponent->AddImpulse(SDK::FVector{ 0.f, 10.f, 10.f }, SDK::FName(), true);
+
         }
     }
     catch (...) {
-        API::get()->log_error("[PRE_ENGINE_TICK][fix_weapon_materials] Exception");
+        API::get()->log_error("[PRE_ENGINE_TICK][fix_weapon] Fix materials exception");
     }
-}
 
-void OuterWorldsPlugin::fix_weapon_ironsights_offset() {
+    // offset FPVCamera to match weapon barrel
     try {
         if (m_equipped_weapon.value != nullptr && m_equipped_weapon.value->SkeletalMeshComponent != nullptr && is_vr_hud_valid()) {
             // get barrel transform
@@ -733,35 +734,31 @@ void OuterWorldsPlugin::fix_weapon_ironsights_offset() {
 
             auto weapon_mode = m_equipped_weapon.value->GetCurrentMode();
 
-            //
-            //if (weapon_mode->IsA(SDK::URangedMode::StaticClass())) {
-            if (SDK::UKismetMathLibrary::ClassIsChildOf(weapon_mode->Class, SDK::URangedMode::StaticClass())) {
-                
-                static_cast<SDK::URangedMode*>(weapon_mode)->FineAimFovAdjustment = 0.f;
-                static_cast<SDK::URangedMode*>(weapon_mode)->FineAimLookStickRateMultiplier = 0.00001f;
+            // fix fine aim fov adjustment
+            if (weapon_mode->IsA(SDK::URangedMode::StaticClass())) {
+                if (SDK::UKismetMathLibrary::ClassIsChildOf(weapon_mode->Class, SDK::URangedMode::StaticClass())) {
+                    static_cast<SDK::URangedMode*>(weapon_mode)->FineAimFovAdjustment = 0.f;
+                    static_cast<SDK::URangedMode*>(weapon_mode)->FineAimLookStickRateMultiplier = 0.00001f;
 
-                if (static_cast<SDK::URangedMode*>(weapon_mode)->HasScope()) {
-                    m_vr_hud->set_scope_visibility(true);
-                    if (m_equipped_weapon.value->SkeletalMeshComponent->DoesSocketExist(SDK::UKismetStringLibrary::Conv_StringToName(L"Sight_Socket"))) {
-                        // get scope transform
-                        offset_transform = m_equipped_weapon.value->SkeletalMeshComponent->GetSocketTransform(
-                            SDK::UKismetStringLibrary::Conv_StringToName(L"Sight_Socket"), SDK::ERelativeTransformSpace::RTS_Component
-                        );
-                        m_vr_hud->set_scope_offset({ 0.f, 0.f, offset_transform.Translation.Z });
-                    }
-                }
-                else {
-                    m_vr_hud->set_scope_visibility(false);
+                    //if (static_cast<SDK::URangedMode*>(weapon_mode)->HasScope()) {
+                    //    m_vr_hud->set_scope_visibility(true);
+                    //    if (m_equipped_weapon.value->SkeletalMeshComponent->DoesSocketExist(SDK::UKismetStringLibrary::Conv_StringToName(L"Sight_Socket"))) {
+                    //        // get scope transform
+                    //        offset_transform = m_equipped_weapon.value->SkeletalMeshComponent->GetSocketTransform(
+                    //            SDK::UKismetStringLibrary::Conv_StringToName(L"Sight_Socket"), SDK::ERelativeTransformSpace::RTS_Component
+                    //        );
+                    //        m_vr_hud->set_scope_offset({ 0.f, 0.f, offset_transform.Translation.Z });
+                    //    }
+                    //}
+                    //else {
+                    //    m_vr_hud->set_scope_visibility(false);
+                    //}
                 }
             }
-            else {
-                m_vr_hud->set_scope_visibility(false);
-            }
-
         }
     }
     catch (...) {
-        API::get()->log_error("[fix_weapon_ironsights_offset] Exception");
+        API::get()->log_error("[PRE_ENGINE_TICK][fix_weapon] Offset camera exception");
     }
 }
 

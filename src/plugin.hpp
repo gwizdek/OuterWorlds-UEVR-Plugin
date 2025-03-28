@@ -1,4 +1,4 @@
-#pragma once
+//#pragma once
 
 #include <windows.h>
 #include <memory>
@@ -31,8 +31,9 @@
 #include "uevr/API.hpp"
 #include "uevr/Plugin.hpp"
 #include "plugin_shared.hpp"
-#include "plugin_vr_hud.hpp"
+//#include "plugin_vr_hud.hpp"
 #include "plugin_config.hpp"
+#include "vr_weapon.hpp"
 //#include "pch.h"
 
 #define  _CRT_SECURE_NO_WARNINGS 1
@@ -70,7 +71,8 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 class OuterWorldsPlugin;
 extern std::unique_ptr<OuterWorldsPlugin> g_plugin;
 
-//class OuterWorldsPluginConfig;
+class OuterWorldsVRWeapon;
+class OuterWorldsVRHUD;
 
 class OuterWorldsPlugin : public uevr::Plugin {
 public:
@@ -100,6 +102,7 @@ public:
     // VR HUD
     OuterWorldsVRHUD* m_vr_hud{ nullptr };
     OuterWorldsPluginConfig* m_config{ nullptr };
+    OuterWorldsVRWeapon* m_vr_weapon{ nullptr };
 
     // convenience pointers
     SDK::UWorld* m_world{ nullptr };
@@ -166,11 +169,10 @@ public:
     void pause_daytime(bool pause);
     void cycle_native_fix();
     void handle_native_fix(const UEVR_VRData* vr);
-    void fix_weapon_materials();
+    void fix_weapon();
     void fix_player_character_materials();
     void fix_player_highlighter();
     void fix_cinematic_camera();
-    void fix_weapon_ironsights_offset();
     void show_ability_overview(bool visible);
     void set_mouse_cursor();
     void set_idle_camera_time(float seconds_to_wait);
