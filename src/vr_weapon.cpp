@@ -6,7 +6,7 @@ using namespace uevr;
 void OuterWorldsVRWeapon::tick() {
     try {
         if (m_common != nullptr) {
-            API::get()->log_warn("[VR Weapon][tick] Crouched: %s", m_common->get_test_value() ? "YES" : "NO");
+            //API::get()->log_warn("[VR Weapon][tick] Crouched: %s", m_common->get_test_value() ? "YES" : "NO");
         }
     }
     catch (...) {

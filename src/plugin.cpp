@@ -19,11 +19,206 @@ void OuterWorldsPlugin::on_initialize() {
 
 void OuterWorldsPlugin::on_xinput_get_state(uint32_t* retval, uint32_t user_index, XINPUT_STATE* state) {
     PLUGIN_LOG_ONCE("XInput Get State");
+
+    if (m_common != nullptr) {
+        // start cb timer
+        std::chrono::steady_clock::time_point begin_time;
+        if (m_common->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
+            begin_time = std::chrono::steady_clock::now();
+        }
+
+        m_common->on_xinput(state);
+
+        // set it to true, so we won't process pawn again in pre_engine_tick cb
+        m_xinput_cb_processed = true;
+
+        // calculate cb duration
+        if (m_common->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
+            std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
+            m_common->set_ui_xinput_duration(static_cast<int>(std::chrono::duration_cast<std::chrono::microseconds>(end_time - begin_time).count()));
+        }
+    }
 }
 
 void OuterWorldsPlugin::on_pre_engine_tick(API::UGameEngine* engine, float delta) {
     PLUGIN_LOG_ONCE("Pre Engine Tick: %f", delta);
+
     if (m_common != nullptr) {
-        m_common->tick();
+        m_cb_calls_count = m_cb_calls_count < CB_DURATION_SAMPLE_RATE ? ++m_cb_calls_count : 0;
+        // start cb timer
+        std::chrono::steady_clock::time_point begin_time;
+        if (m_common->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
+            begin_time = std::chrono::steady_clock::now();
+        }
+
+        m_common->on_tick();
+
+        // calculate cb duration
+        if (m_common->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
+            std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
+            m_common->set_ui_pre_engine_tick_duration(static_cast<int>(std::chrono::duration_cast<std::chrono::microseconds>(end_time - begin_time).count()));
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------
+// ImGui
+// -------------------------------------------------------------------------------------
+bool OuterWorldsPlugin::on_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+    ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
+
+    return !ImGui::GetIO().WantCaptureMouse && !ImGui::GetIO().WantCaptureKeyboard;
+}
+
+void OuterWorldsPlugin::on_device_reset() {
+    PLUGIN_LOG_ONCE("Device Reset");
+
+    //std::scoped_lock _{ m_imgui_mutex };
+
+    const auto renderer_data = API::get()->param()->renderer;
+
+    if (renderer_data->renderer_type == UEVR_RENDERER_D3D11) {
+        ImGui_ImplDX11_Shutdown();
+        g_d3d11 = {};
+    }
+
+    if (renderer_data->renderer_type == UEVR_RENDERER_D3D12) {
+        ImGui_ImplDX12_Shutdown();
+        g_d3d12 = {};
+    }
+
+    m_imgui_initialized = false;
+}
+
+void OuterWorldsPlugin::on_post_render_vr_framework_dx11(ID3D11DeviceContext* context, ID3D11Texture2D* texture, ID3D11RenderTargetView* rtv) {
+    PLUGIN_LOG_ONCE("Post Render VR Framework DX11");
+
+    const auto vr_active = API::get()->param()->vr->is_hmd_active();
+
+    if (!m_imgui_initialized || !vr_active) {
+        return;
+    }
+
+    if (m_was_rendering_desktop) {
+        m_was_rendering_desktop = false;
+        on_device_reset();
+        return;
+    }
+
+    //std::scoped_lock _{ m_imgui_mutex };
+
+    ImGui_ImplDX11_NewFrame();
+    g_d3d11.render_imgui_vr(context, rtv);
+}
+
+void OuterWorldsPlugin::on_post_render_vr_framework_dx12(ID3D12GraphicsCommandList* command_list, ID3D12Resource* rt, D3D12_CPU_DESCRIPTOR_HANDLE* rtv) {
+    PLUGIN_LOG_ONCE("Post Render VR Framework DX12");
+
+    const auto vr_active = API::get()->param()->vr->is_hmd_active();
+
+    if (!m_imgui_initialized || !vr_active) {
+        return;
+    }
+
+    if (m_was_rendering_desktop) {
+        m_was_rendering_desktop = false;
+        on_device_reset();
+        return;
+    }
+
+    //std::scoped_lock _{ m_imgui_mutex };
+
+    ImGui_ImplDX12_NewFrame();
+    g_d3d12.render_imgui_vr(command_list, rtv);
+}
+
+bool OuterWorldsPlugin::initialize_imgui() {
+    if (m_imgui_initialized) {
+        return true;
+    }
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    static const auto imgui_ini = API::get()->get_persistent_dir(L"outer_worlds_vr_imgui.ini").string();
+    ImGui::GetIO().IniFilename = imgui_ini.c_str();
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+
+    const auto renderer_data = API::get()->param()->renderer;
+
+    DXGI_SWAP_CHAIN_DESC swap_desc{};
+    auto swapchain = (IDXGISwapChain*)renderer_data->swapchain;
+    swapchain->GetDesc(&swap_desc);
+
+    m_wnd = swap_desc.OutputWindow;
+
+    if (!ImGui_ImplWin32_Init(m_wnd)) {
+        return false;
+    }
+
+    if (renderer_data->renderer_type == UEVR_RENDERER_D3D11) {
+        if (!g_d3d11.initialize()) {
+            return false;
+        }
+    }
+    else if (renderer_data->renderer_type == UEVR_RENDERER_D3D12) {
+        if (!g_d3d12.initialize()) {
+            return false;
+        }
+    }
+
+    m_imgui_initialized = true;
+    return true;
+}
+
+void OuterWorldsPlugin::on_present() {
+    //std::scoped_lock _{ m_imgui_mutex };
+
+    if (!m_imgui_initialized) {
+        API::get()->log_info("imgui not initialized");
+        if (!initialize_imgui()) {
+            API::get()->log_info("Failed to initialize imgui");
+            return;
+        }
+        else {
+            API::get()->log_info("Initialized imgui");
+        }
+    }
+
+    const auto renderer_data = API::get()->param()->renderer;
+
+    if (renderer_data->renderer_type == UEVR_RENDERER_D3D11) {
+        ImGui_ImplDX11_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+
+        if (m_common != nullptr) {
+            m_common->on_draw_imgui();
+        }
+
+        ImGui::EndFrame();
+        ImGui::Render();
+
+        g_d3d11.render_imgui();
+    }
+    else if (renderer_data->renderer_type == UEVR_RENDERER_D3D12) {
+        auto command_queue = (ID3D12CommandQueue*)renderer_data->command_queue;
+
+        if (command_queue == nullptr) {
+            return;
+        }
+
+        ImGui_ImplDX12_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+
+        if (m_common != nullptr) {
+            m_common->on_draw_imgui();
+        }
+
+        ImGui::EndFrame();
+        ImGui::Render();
+
+        g_d3d12.render_imgui();
     }
 }
