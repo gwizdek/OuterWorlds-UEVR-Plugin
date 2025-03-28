@@ -1,17 +1,16 @@
 #pragma once
+#include "vr_common.hpp"
 
+class OuterWorldsCommon;
 
 class OuterWorldsVRWeapon
 {
 private:
-    //OuterWorldsPlugin* m_plugin{ nullptr };
+    OuterWorldsCommon* m_common{ nullptr };
 
 public:
-    //OuterWorldsVRWeapon(OuterWorldsPlugin* plugin);
-    OuterWorldsVRWeapon() = default;
-
-    virtual ~OuterWorldsVRWeapon();
+    OuterWorldsVRWeapon(OuterWorldsCommon* common) { m_common = common; };
+    virtual ~OuterWorldsVRWeapon() {};
 
     void tick();
-
 };

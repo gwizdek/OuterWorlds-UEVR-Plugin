@@ -1,26 +1,12 @@
-//#include "uevr/API.hpp"
-//#include "vr_weapon.hpp"
-#include "plugin.hpp"
+#include "uevr/API.hpp"
+#include "vr_weapon.hpp"
 
-//using namespace uevr;
-
-//OuterWorldsVRWeapon::OuterWorldsVRWeapon(OuterWorldsPlugin* plugin) {
-//    API::get()->log_warn("[VR Weapon] Constructor");
-//    m_plugin = plugin;
-//};
-class OuterWorldsPlugin;
-
-extern std::unique_ptr<OuterWorldsPlugin> g_plugin;
-
-
-OuterWorldsVRWeapon::~OuterWorldsVRWeapon() {
-    API::get()->log_warn("[VR Weapon] Destructor");
-};
+using namespace uevr;
 
 void OuterWorldsVRWeapon::tick() {
     try {
-        if (g_plugin != nullptr) {
-            API::get()->log_warn("[VR Weapon][tick] Crouched: %s", g_plugin->m_is_crouched.value ? "YES" : "NO");
+        if (m_common != nullptr) {
+            API::get()->log_warn("[VR Weapon][tick] Crouched: %s", m_common->get_test_value() ? "YES" : "NO");
         }
     }
     catch (...) {
