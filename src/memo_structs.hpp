@@ -1,11 +1,11 @@
 #pragma once
+#include "uevr/API.hpp"
+#include <windows.h>
+#include <Xinput.h>
 
 using namespace uevr;
 
-typedef enum ModEvent {
-    MOD_EVENT_VR_HUD_INITIALIZE,
-    MOD_EVENT_ENABLE_WORLD_RENDERING
-} ModEvent;
+
 
 template<class T>
 struct MemoProperty

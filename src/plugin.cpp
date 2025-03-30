@@ -1,5 +1,6 @@
 #include "plugin.hpp"
-#include "vr_common.hpp"
+#include "plugin_config.hpp"
+#include "main.hpp"
 
 using namespace uevr;
 
@@ -9,33 +10,42 @@ OuterWorldsPlugin::OuterWorldsPlugin() {
 }
 
 OuterWorldsPlugin::~OuterWorldsPlugin() {
-    m_common->~OuterWorldsCommon();
+    m_main->~OuterWorldsMain();
 }
 
 void OuterWorldsPlugin::on_initialize() {
     PLUGIN_LOG_ONCE("Plugin Initializing...");
-    m_common = new OuterWorldsCommon();
+    m_main = new OuterWorldsMain();
+
+    // plugin configuration
+    OuterWorldsPluginConfig::load_plugin_config();
 }
 
 void OuterWorldsPlugin::on_xinput_get_state(uint32_t* retval, uint32_t user_index, XINPUT_STATE* state) {
     PLUGIN_LOG_ONCE("XInput Get State");
 
-    if (m_common != nullptr) {
+    if (m_main != nullptr) {
         // start cb timer
         std::chrono::steady_clock::time_point begin_time;
-        if (m_common->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
+        if (m_main->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
             begin_time = std::chrono::steady_clock::now();
         }
 
-        m_common->on_xinput(state);
+        const UEVR_VRData* vr = API::get()->param()->vr;
+        if (!vr->is_runtime_ready())
+            return;
+
+        m_main->prepare_pointers();
+        m_main->prepare_state();
+        m_main->on_xinput(state);
 
         // set it to true, so we won't process pawn again in pre_engine_tick cb
         m_xinput_cb_processed = true;
 
         // calculate cb duration
-        if (m_common->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
+        if (m_main->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
             std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
-            m_common->set_ui_xinput_duration(static_cast<int>(std::chrono::duration_cast<std::chrono::microseconds>(end_time - begin_time).count()));
+            m_main->set_ui_xinput_duration(static_cast<int>(std::chrono::duration_cast<std::chrono::microseconds>(end_time - begin_time).count()));
         }
     }
 }
@@ -43,20 +53,42 @@ void OuterWorldsPlugin::on_xinput_get_state(uint32_t* retval, uint32_t user_inde
 void OuterWorldsPlugin::on_pre_engine_tick(API::UGameEngine* engine, float delta) {
     PLUGIN_LOG_ONCE("Pre Engine Tick: %f", delta);
 
-    if (m_common != nullptr) {
+    if (m_main != nullptr) {
         m_cb_calls_count = m_cb_calls_count < CB_DURATION_SAMPLE_RATE ? ++m_cb_calls_count : 0;
         // start cb timer
         std::chrono::steady_clock::time_point begin_time;
-        if (m_common->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
+        if (m_main->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
             begin_time = std::chrono::steady_clock::now();
         }
 
-        m_common->on_tick();
+        const UEVR_VRData* vr = API::get()->param()->vr;
+
+        try {
+            // if the controllers are not active, the xinput cb is not triggered.
+            // normally we want the xinput cb to prepare vars as it's the first cb to be called
+            // but if it wasn't called, we prepare them here
+            if (!m_xinput_cb_processed) {
+                if (!vr->is_runtime_ready())
+                    return;
+
+                m_main->prepare_pointers();
+                m_main->prepare_state();
+            }
+            else {
+                // reset for next cb iteration
+                m_xinput_cb_processed = false;
+            }
+        }
+        catch (...) {
+            API::get()->log_error("[pre_engine_tick] Prepare pointers / state");
+        }
+
+        m_main->on_tick();
 
         // calculate cb duration
-        if (m_common->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
+        if (m_main->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
             std::chrono::steady_clock::time_point end_time = std::chrono::steady_clock::now();
-            m_common->set_ui_pre_engine_tick_duration(static_cast<int>(std::chrono::duration_cast<std::chrono::microseconds>(end_time - begin_time).count()));
+            m_main->set_ui_pre_engine_tick_duration(static_cast<int>(std::chrono::duration_cast<std::chrono::microseconds>(end_time - begin_time).count()));
         }
     }
 }
@@ -175,13 +207,13 @@ void OuterWorldsPlugin::on_present() {
     //std::scoped_lock _{ m_imgui_mutex };
 
     if (!m_imgui_initialized) {
-        API::get()->log_info("imgui not initialized");
+        API::get()->log_warn("ImGui not initialized");
         if (!initialize_imgui()) {
-            API::get()->log_info("Failed to initialize imgui");
+            API::get()->log_error("Failed to initialize ImGui");
             return;
         }
         else {
-            API::get()->log_info("Initialized imgui");
+            API::get()->log_warn("Initialized ImGui");
         }
     }
 
@@ -192,8 +224,8 @@ void OuterWorldsPlugin::on_present() {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        if (m_common != nullptr) {
-            m_common->on_draw_imgui();
+        if (m_main != nullptr) {
+            m_main->on_draw_imgui();
         }
 
         ImGui::EndFrame();
@@ -212,8 +244,8 @@ void OuterWorldsPlugin::on_present() {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        if (m_common != nullptr) {
-            m_common->on_draw_imgui();
+        if (m_main != nullptr) {
+            m_main->on_draw_imgui();
         }
 
         ImGui::EndFrame();

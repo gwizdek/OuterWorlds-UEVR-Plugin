@@ -1,5 +1,5 @@
 #include "uevr/API.hpp"
-#include "vr_hud.hpp"
+#include "hud.hpp"
 
 using namespace uevr;
 

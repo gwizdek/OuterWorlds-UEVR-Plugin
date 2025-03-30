@@ -10,6 +10,7 @@
 
 #include "uevr/Plugin.hpp"
 
+
 #define PLUGIN_LOG_ONCE(...) { \
     static bool _logged_ = false; \
     if (!_logged_) { \
@@ -22,7 +23,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 class OuterWorldsPlugin;
 extern std::unique_ptr<OuterWorldsPlugin> g_plugin;
 
-class OuterWorldsCommon;
+class OuterWorldsMain;
 
 class OuterWorldsPlugin : public uevr::Plugin {
 private:
@@ -46,7 +47,7 @@ public:
     void on_xinput_get_state(uint32_t* retval, uint32_t user_index, XINPUT_STATE* state) override;
     void on_pre_engine_tick(uevr::API::UGameEngine* engine, float delta) override;
 
-    OuterWorldsCommon* m_common{ nullptr };
+    OuterWorldsMain* m_main{ nullptr };
 
     // ImGui
     HWND m_wnd{};
