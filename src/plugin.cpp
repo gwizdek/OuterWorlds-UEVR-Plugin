@@ -15,10 +15,13 @@ OuterWorldsPlugin::~OuterWorldsPlugin() {
 
 void OuterWorldsPlugin::on_initialize() {
     PLUGIN_LOG_ONCE("Plugin Initializing...");
-    m_main = new OuterWorldsMain();
-
+    
+    // cleanup stale actors
+    OuterWorldsMain::cleanup();
     // plugin configuration
     OuterWorldsPluginConfig::load_plugin_config();
+
+    m_main = new OuterWorldsMain();
 }
 
 void OuterWorldsPlugin::on_xinput_get_state(uint32_t* retval, uint32_t user_index, XINPUT_STATE* state) {
@@ -37,6 +40,7 @@ void OuterWorldsPlugin::on_xinput_get_state(uint32_t* retval, uint32_t user_inde
 
         m_main->prepare_pointers();
         m_main->prepare_state();
+        m_main->prepare_game_state();
         m_main->on_xinput(state);
 
         // set it to true, so we won't process pawn again in pre_engine_tick cb
@@ -63,24 +67,20 @@ void OuterWorldsPlugin::on_pre_engine_tick(API::UGameEngine* engine, float delta
 
         const UEVR_VRData* vr = API::get()->param()->vr;
 
-        try {
-            // if the controllers are not active, the xinput cb is not triggered.
-            // normally we want the xinput cb to prepare vars as it's the first cb to be called
-            // but if it wasn't called, we prepare them here
-            if (!m_xinput_cb_processed) {
-                if (!vr->is_runtime_ready())
-                    return;
+        // if the controllers are not active, the xinput cb is not triggered.
+        // normally we want the xinput cb to prepare vars as it's the first cb to be called
+        // but if it wasn't called, we prepare them here
+        if (!m_xinput_cb_processed) {
+            if (!vr->is_runtime_ready())
+                return;
 
-                m_main->prepare_pointers();
-                m_main->prepare_state();
-            }
-            else {
-                // reset for next cb iteration
-                m_xinput_cb_processed = false;
-            }
+            m_main->prepare_pointers();
+            m_main->prepare_state();
+            m_main->prepare_game_state();
         }
-        catch (...) {
-            API::get()->log_error("[pre_engine_tick] Prepare pointers / state");
+        else {
+            // reset for next cb iteration
+            m_xinput_cb_processed = false;
         }
 
         m_main->on_tick();

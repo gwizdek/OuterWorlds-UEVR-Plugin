@@ -2,26 +2,36 @@
 #include "imgui/imgui.h"
 
 #include "indiana/SDK/CinematicCamera_classes.hpp"
+#include "indiana/SDK/PlayerHighlightComponent_classes.hpp"
 
 #include "main.hpp"
 #include "weapon.hpp"
 #include "hud.hpp"
 #include "plugin_config.hpp"
 #include "native_fix.hpp"
+#include "plugin_utils.hpp"
 
 using namespace uevr;
 
 OuterWorldsMain::OuterWorldsMain() {
-    API::get()->log_warn("[main] Constructor");
-    m_vr_weapon = new OuterWorldsWeapon(this);
-    m_vr_hud = new OuterWorldsHUD(this);
-    m_native_fix = new OuterWorldsNativeFix(this);
+    try {
+        API::get()->log_warn("[main] Constructor");
+        m_vr_controllers = new VRControllers();
+        m_vr_weapon = new OuterWorldsWeapon(this, m_vr_controllers, RIGHT_HANDED);
+        m_vr_hud = new OuterWorldsHUD(this);
+        //m_native_fix = new OuterWorldsNativeFix(this);
+    }
+    catch (...) {
+        API::get()->log_error("[main][constructor] Exception");
+        return;
+    }
 };
 
 OuterWorldsMain::~OuterWorldsMain() {
     API::get()->log_warn("[main] Destructor");
-    m_vr_weapon->~OuterWorldsWeapon();
     m_vr_hud->~OuterWorldsHUD();
+    m_vr_weapon->~OuterWorldsWeapon();
+    m_vr_controllers->~VRControllers();
 }
 
 void OuterWorldsMain::on_xinput(XINPUT_STATE* state) {
@@ -29,10 +39,39 @@ void OuterWorldsMain::on_xinput(XINPUT_STATE* state) {
 }
 
 void OuterWorldsMain::on_tick() {
+    handle_level_change();
+    handle_game_state();
+    OuterWorldsNativeFix::on_tick();
+    fix_ledger();
+    fix_workbench();
+    handle_mod_events();
+    handle_crouch();
+
     //API::get()->log_warn("[Main] Tick");
-    if (m_vr_weapon != nullptr) {
+    if (is_valid()) {
         m_vr_weapon->tick();
     }
+}
+
+bool OuterWorldsMain::is_valid() {
+    try {
+        if (
+            !m_vr_controllers->is_valid() ||
+            !m_vr_weapon->is_valid()
+            ) {
+            return false;
+        }
+        return true;
+    }
+    catch (...) {
+        API::get()->log_error("[main][is_valid] Exception");
+        return false;
+    }
+}
+
+void OuterWorldsMain::cleanup() {
+    API::get()->log_warn("[main][cleanup] Starting Cleanup");
+    VRControllers::cleanup();
 }
 
 // -------------------------------------------------------------------------------------
@@ -42,16 +81,17 @@ void OuterWorldsMain::prepare_pointers() {
     try {
         // world
         m_world = SDK::UWorld::GetWorld();
-
+        // pawn
+        m_pawn = m_world != nullptr ? SDK::UGameplayStatics::GetPlayerPawn(m_world, 0) : nullptr;
         // character
         m_player_character = SDK::AIndianaPlayerCharacter::GetIndianaPC();
-
-        // controller, UI, HUD
+        // controller
         m_player_controller = SDK::AIndianaPlayerController::GetIndianaPlayerController();
-
         if (m_player_controller != nullptr) {
+            // UI
             m_ui = SDK::UIndianaUIFunctionLibrary::GetIndianaUI(&m_reusable_branches, m_player_controller);
             if (m_ui != nullptr) {
+                // HUD
                 m_hud = m_ui->GetHUD();
             }
         }
@@ -61,16 +101,12 @@ void OuterWorldsMain::prepare_pointers() {
     }
     catch (...) {
         API::get()->log_error("[main][prepare_pointers] Exception");
-        return;
     }
 }
 
 // sets state vars, so we can use them later in handlers
-bool OuterWorldsMain::prepare_state() {
+void OuterWorldsMain::prepare_state() {
     try {
-        // pawn
-        m_pawn.set_value(m_world != nullptr ? SDK::UGameplayStatics::GetPlayerPawn(m_world, 0) : nullptr);
-
         // level
         m_level.set_value(m_world != nullptr ? m_world->PersistentLevel : nullptr);
 
@@ -81,8 +117,7 @@ bool OuterWorldsMain::prepare_state() {
             // equipped weapon
             auto equipment = static_cast<SDK::AIndianaPlayerCharacter_BP_C*>(m_player_character)->Equipment;
             if (equipment != nullptr) {
-                SDK::UWeapon* weapon = equipment->GetEquippedWeapon();
-                m_equipped_weapon.set_value(weapon);
+                m_vr_weapon->set_equipped_weapon(equipment->GetEquippedWeapon());
             }
 
             // conversation camera
@@ -112,10 +147,57 @@ bool OuterWorldsMain::prepare_state() {
     }
     catch (...) {
         API::get()->log_error("[main][prepare_state] Exception");
-        return false;
     }
+}
 
-    return true;
+void OuterWorldsMain::prepare_game_state() {
+    try {
+        if (!SDK::UKismetSystemLibrary::IsValid(m_pawn)) {
+            m_game_state.set_value(GAME_STATE_UNDEFINED);
+            return;
+        }
+
+        if (SDK::UKismetSystemLibrary::IsValid(m_pawn) && m_pawn->IsA(SDK::ADefaultPawn::StaticClass())) {
+            m_game_state.set_value(GAME_STATE_MAIN_MENU);
+            return;
+        }
+
+        if (
+            m_ui_ledger_open_state.value == SDK::EWidgetOpenState::TransitioningToMaximized ||
+            m_ui_ledger_open_state.value == SDK::EWidgetOpenState::Maximized
+            ) {
+            m_game_state.set_value(GAME_STATE_LEDGER);
+            return;
+        }
+
+        if (
+            m_ui_workbench_open_state.value == SDK::EWidgetOpenState::TransitioningToMaximized ||
+            m_ui_workbench_open_state.value == SDK::EWidgetOpenState::Maximized
+            ) {
+            m_game_state.set_value(GAME_STATE_WORKBENCH);
+            return;
+        }
+
+        if (m_is_game_paused.value) {
+            m_game_state.set_value(GAME_STATE_PAUSE_MENU);
+            return;
+        }
+
+        if (m_player_character->ConversationCameraComponent->CameraComponent->IsActive()) {
+            if (m_ui_conversation_open_state.value == SDK::EWidgetOpenState::Minimized) {
+                m_game_state.set_value(GAME_STATE_COMPUTER_TERMINAL);
+                return;
+            }
+
+            m_game_state.set_value(GAME_STATE_CONVERSATION);
+            return;
+        }
+
+        m_game_state.set_value(GAME_STATE_PLAYING);
+    }
+    catch (...) {
+        API::get()->log_error("[main][prepare_game_state] Exception");
+    }
 }
 
 // -------------------------------------------------------------------------------------
@@ -135,55 +217,393 @@ void OuterWorldsMain::handle_controller_input(XINPUT_STATE* state) {
 
 
     if (m_gamepad_left_thumb.is_long_pressed(2.f)) {
-        m_native_fix->cycle_native_fix();
+        OuterWorldsNativeFix::cycle(50);
+    }
+}
+
+// -------------------------------------------------------------------------------------
+// handlers
+// -------------------------------------------------------------------------------------
+void OuterWorldsMain::handle_game_state() {
+    try {
+        if (m_game_state.has_changed()) {
+            API::get()->log_warn("[main][handle_game_state] New Game State: %s", GameStateName[m_game_state.value]);
+            const UEVR_VRData* vr = API::get()->param()->vr;
+
+            switch (m_game_state.value) {
+                case GAME_STATE_MAIN_MENU:
+                    API::UObjectHook::set_disabled(true);
+                    vr->set_aim_method(0);
+                    vr->set_decoupled_pitch_enabled(false);
+                    vr->set_mod_value("VR_CameraForwardOffset", "0.000000");
+                    vr->set_mod_value("VR_CameraUpOffset", "0.000000");
+                    vr->set_mod_value("UI_Distance", "2.000000");
+                    vr->set_mod_value("UI_Size", "1.400000");
+                    vr->set_mod_value("UI_Y_Offset", "0.00000");
+                    vr->set_mod_value("VR_RoomscaleMovement", "false");
+                    vr->set_mod_value("VR_DecoupledPitchUIAdjust", "false");
+                    PluginUtils::reset_height(0.f);
+                    vr->recenter_view();
+                    OuterWorldsNativeFix::cycle(50);
+                    break;
+
+                case GAME_STATE_PAUSE_MENU:
+                    API::UObjectHook::set_disabled(false);
+                    vr->set_aim_method(0);
+                    vr->set_decoupled_pitch_enabled(true);
+                    vr->set_mod_value("VR_CameraForwardOffset", "0.000000");
+                    vr->set_mod_value("VR_CameraUpOffset", "0.000000");
+                    vr->set_mod_value("UI_Distance", "2.000000");
+                    vr->set_mod_value("UI_Size", "1.400000");
+                    vr->set_mod_value("UI_Y_Offset", "-0.30000");
+                    vr->set_mod_value("VR_RoomscaleMovement", "false");
+                    vr->set_mod_value("VR_DecoupledPitchUIAdjust", "false");
+                    PluginUtils::reset_height(0.f);
+                    vr->recenter_view();
+                    break;
+
+                case GAME_STATE_PLAYING:
+                    API::UObjectHook::set_disabled(false);
+                    vr->set_aim_method(2);
+                    vr->set_decoupled_pitch_enabled(true);
+                    vr->set_mod_value("VR_CameraForwardOffset", "0.000000");
+                    vr->set_mod_value("VR_CameraUpOffset", "0.000000");
+                    vr->set_mod_value("UI_Distance", "2.000000");
+                    vr->set_mod_value("UI_Size", "1.200000");
+                    vr->set_mod_value("UI_Y_Offset", "0.00000");
+                    vr->set_mod_value("VR_RoomscaleMovement", "true");
+                    vr->set_mod_value("VR_DecoupledPitchUIAdjust", "true");
+                    vr->set_mod_value("VR_NativeStereoFix", "true");
+                    PluginUtils::reset_height(0.f);
+                    vr->recenter_view();
+                    break;
+
+                case GAME_STATE_CONVERSATION:
+                    API::UObjectHook::set_disabled(true);
+                    vr->set_aim_method(0);
+                    vr->set_mod_value("VR_CameraForwardOffset", "0.000000");
+                    vr->set_mod_value("VR_CameraUpOffset", "0.000000");
+                    vr->set_mod_value("UI_Distance", "1.400000");
+                    vr->set_mod_value("UI_Size", "1.000000");
+                    vr->set_mod_value("UI_Y_Offset", "0.00000");
+                    vr->set_mod_value("VR_RoomscaleMovement", "false");
+                    vr->set_mod_value("VR_DecoupledPitchUIAdjust", "false");
+                    vr->recenter_view();
+                    break;
+
+                case GAME_STATE_COMPUTER_TERMINAL:
+                    API::UObjectHook::set_disabled(true);
+                    vr->set_aim_method(0);
+                    vr->set_mod_value("VR_CameraForwardOffset", "-25.000000");
+                    vr->set_mod_value("VR_CameraUpOffset", "15.000000");
+                    vr->set_mod_value("UI_Distance", "1.400000");
+                    vr->set_mod_value("UI_Size", "1.000000");
+                    vr->set_mod_value("UI_Y_Offset", "0.00000");
+                    vr->set_mod_value("VR_RoomscaleMovement", "false");
+                    vr->set_mod_value("VR_DecoupledPitchUIAdjust", "false");
+                    vr->recenter_view();
+                    break;
+
+                case GAME_STATE_LEDGER:
+                case GAME_STATE_WORKBENCH:
+                    API::UObjectHook::set_disabled(true);
+                    vr->set_aim_method(0);
+                    vr->set_mod_value("VR_CameraForwardOffset", "0.000000");
+                    vr->set_mod_value("VR_CameraUpOffset", "0.000000");
+                    vr->set_mod_value("UI_Distance", "2.000000");
+                    vr->set_mod_value("UI_Size", "1.400000");
+                    vr->set_mod_value("UI_Y_Offset", "-0.30000");
+                    vr->set_mod_value("VR_RoomscaleMovement", "false");
+                    vr->set_mod_value("VR_DecoupledPitchUIAdjust", "false");
+                    vr->recenter_view();
+                    break;
+            }
+        }
+    }
+    catch (...) {
+        API::get()->log_error("[handle_game_state] Exception");
+    }
+}
+
+
+void OuterWorldsMain::handle_level_change() {
+    try {
+        if (m_level.has_changed() && m_level.value != nullptr) {
+            const UEVR_VRData* vr = API::get()->param()->vr;
+
+            //const UEVR_SDKData* sdk = API::get()->sdk();
+            auto level_name = m_level.value->GetFullName();
+            API::get()->log_warn("[main][handle_level_change] New Level: %s", level_name.c_str());
+
+            // reinitialize
+            m_vr_controllers->initialize();
+            m_vr_weapon->initialize();
+
+            set_idle_camera_time(1000);
+            fix_player_highlighter();
+            fix_cinematic_camera();
+            //// check if it's the main menu
+            //if (level_name.ends_with(".00_Menu.PersistentLevel")) {
+            //}
+            //else {
+            //    // initialize hud
+            //    m_mod_events.insert(MOD_EVENT_VR_HUD_INITIALIZE);
+
+            //    vr->set_aim_method(2);
+            //    vr->set_snap_turn_enabled(true);
+            //    vr->set_decoupled_pitch_enabled(true);
+            //    vr->set_mod_value("VR_RoomscaleMovement", "true");
+            //    API::UObjectHook::set_disabled(false);
+            //}
+
+            // schedule vr hud init as level change has destroyed our custom actors
+            //API::get()->log_warn("Inserting Event: MOD_EVENT_VR_HUD_INITIALIZE");
+            //m_mod_events.insert(MOD_EVENT_VR_HUD_INITIALIZE);
+
+            //vr->set_aim_method(2);
+            //vr->set_decoupled_pitch_enabled(true);
+            //vr->set_mod_value("VR_RoomscaleMovement", "true");
+            //vr->set_mod_value("UI_Distance", "2.000000");
+            //vr->set_mod_value("UI_Size", "1.200000");
+            //API::UObjectHook::set_disabled(false);
+            //PluginUtils::reset_height(0.f);
+
+            //if (m_pawn.value != nullptr && !m_pawn.value->IsA(SDK::ADefaultPawn::StaticClass())) {
+            //    if (m_config->m_cfg_option_auto_pause_daytime) {
+            //        pause_daytime(true);
+            //    }
+            //}
+
+        }
+    }
+    catch (...) {
+        API::get()->log_error("[handle_level_change] Exception");
+    }
+}
+
+void OuterWorldsMain::handle_mod_events() {
+    try {
+        if (m_mod_events.contains(MOD_EVENT_ENABLE_WORLD_RENDERING)) {
+            if (m_world != nullptr) {
+                API::get()->log_warn("[main][handle_mod_events] SetEnableWorldRendering");
+                SDK::UGameplayStatics::SetEnableWorldRendering(m_world, true);
+                m_mod_events.extract(MOD_EVENT_ENABLE_WORLD_RENDERING);
+            }
+        }
+    }
+    catch (...) {
+        API::get()->log_error("[main][handle_mod_events] Exception");
+    }
+}
+
+void OuterWorldsMain::handle_crouch() {
+    if (m_is_crouched.has_changed()) {
+        PluginUtils::reset_height(0.f);
+    }
+}
+
+
+// -------------------------------------------------------------------------------------
+// fixes
+// -------------------------------------------------------------------------------------
+void OuterWorldsMain::fix_player_highlighter() {
+    try {
+        if (m_player_character != nullptr && m_player_character->IsA(SDK::AIndianaPlayerCharacter_BP_C::StaticClass())) {
+            API::get()->log_warn("[main][fix_highlighter] Searching for PlayerHightlightComponent");
+
+            auto class_ptr = API::get()->find_uobject<API::UClass>(L"BlueprintGeneratedClass /Game/Blueprints/Player/PlayerHighlightComponent.PlayerHighlightComponent_C");
+            if (class_ptr != nullptr) {
+                API::get()->log_warn("[main][fix_highlighter] PlayerHighlightComponent Class found");
+                std::vector<SDK::UObject*> matching_objects = class_ptr->get_objects_matching<SDK::UObject>();
+
+                for (size_t i = 0; i < matching_objects.size(); i++) {
+                    if (matching_objects[i]->IsA(SDK::UPlayerHighlightComponent_C::StaticClass())) {
+                        API::get()->log_warn("[main][fix_highlighter] PlayerHighlightComponent Object found, changing params");
+                        static_cast<SDK::UPlayerHighlightComponent_C*>(matching_objects[i])->PostProcessDynamicMaterial->SetScalarParameterValue(
+                            SDK::UKismetStringLibrary::Conv_StringToName(L"OutlineThickness"), 0.5f
+                        );
+                        static_cast<SDK::UPlayerHighlightComponent_C*>(matching_objects[i])->PostProcessDynamicMaterial->SetScalarParameterValue(
+                            SDK::UKismetStringLibrary::Conv_StringToName(L"OutlineBrightness"), 1.0f
+                        );
+                    }
+                }
+            }
+        }
+    }
+    catch (...) {
+        API::get()->log_error("[main][fix_player_highlighter] Exception");
+    }
+}
+
+void OuterWorldsMain::fix_cinematic_camera() {
+    try {
+        API::get()->log_warn("[main][fix_cinematic_camera] Fixing Cinematic Camera");
+        if (SDK::UKismetSystemLibrary::IsValid(m_player_character)) {
+            m_player_character->ConversationCameraComponent->ComputerTerminalLocationInterpSpeed = 0.001f;
+            m_player_character->ConversationCameraComponent->ComputerTerminalRotationInterpSpeed = 0.001f;
+            m_player_character->ConversationCameraComponent->ConversationLocationInterpSpeed = 0.001f;
+            m_player_character->ConversationCameraComponent->ConversationRotationInterpSpeed = 0.001f;
+        }
+        else {
+            API::get()->log_error("[main][fix_cinematic_camera] Player Character is not valid");
+        }
+    }
+    catch (...) {
+        API::get()->log_error("[main][fix_cinematic_camera] Exception");
+    }
+}
+
+void OuterWorldsMain::fix_ledger() {
+    try {
+        // makes ledger background black
+        if (m_ui_ledger_open_state.has_changed()) {
+            const UEVR_VRData* vr = API::get()->param()->vr;
+            if (m_ui_ledger_open_state.value == SDK::EWidgetOpenState::TransitioningToMaximized) {
+                API::get()->log_warn("[main][fix_ledger] Opening Ledger");
+                SDK::UGameplayStatics::SetEnableWorldRendering(m_world, false);
+                return;
+            }
+            else if (m_ui_ledger_open_state.value == SDK::EWidgetOpenState::Maximized) {
+                API::get()->log_warn("[main][fix_ledger] Ledger Opened");
+                vr->set_mod_value("VR_NativeStereoFix", "false");
+                SDK::UGameplayStatics::SetEnableWorldRendering(m_world, true);
+                return;
+            }
+            else {
+                API::get()->log_warn("[main][fix_ledger] Ledger Closing / Closed");
+                SDK::UGameplayStatics::SetEnableWorldRendering(m_world, true);
+                vr->set_mod_value("VR_NativeStereoFix", "true");
+                return;
+            }
+        }
+    }
+    catch (...) {
+        API::get()->log_error("[main][fix_ledger] Exception");
+    }
+}
+
+void OuterWorldsMain::fix_workbench() {
+    try {
+        // makes workbench background black
+        if (m_ui_workbench_open_state.has_changed()) {
+            const UEVR_VRData* vr = API::get()->param()->vr;
+            if (m_ui_workbench_open_state.value == SDK::EWidgetOpenState::TransitioningToMaximized) {
+                API::get()->log_warn("[main][fix_workbench] Opening Workbench");
+                SDK::UGameplayStatics::SetEnableWorldRendering(m_world, false);
+                return;
+            }
+            else if (m_ui_workbench_open_state.value == SDK::EWidgetOpenState::Maximized) {
+                API::get()->log_warn("[main][fix_workbench] Workbench Opened");
+                SDK::UGameplayStatics::SetEnableWorldRendering(m_world, false);
+                vr->set_mod_value("VR_NativeStereoFix", "false");
+                m_mod_events.insert(MOD_EVENT_ENABLE_WORLD_RENDERING);
+                return;
+            }
+            else {
+                API::get()->log_warn("[main][fix_workbench] Workbench Closing / Closed");
+                SDK::UGameplayStatics::SetEnableWorldRendering(m_world, true);
+                vr->set_mod_value("VR_NativeStereoFix", "true");
+                return;
+            }
+        }
+    }
+    catch (...) {
+        API::get()->log_error("[main][fix_ledger] Exception");
     }
 }
 
 
 
 
-void OuterWorldsMain::on_draw_imgui() {
-    if (!API::get()->param()->functions->is_drawing_ui()) {
-        return;
+// -------------------------------------------------------------------------------------
+// setters
+// -------------------------------------------------------------------------------------
+void OuterWorldsMain::set_idle_camera_time(float seconds_to_wait) {
+    try {
+        API::get()->log_warn("[main][set_idle_camera_time] Setting idle time %f", seconds_to_wait);
+        if (m_player_character != nullptr && m_player_character->IsA(SDK::AIndianaPlayerCharacter_BP_C::StaticClass())) {
+            static_cast<SDK::AIndianaPlayerCharacter_BP_C*>(m_player_character)->IdleCamera->SecondsToWait = seconds_to_wait;
+        }
     }
+    catch (...) {
+        API::get()->log_error("[main][set_idle_camera_time] Exception");
+    }
+}
 
-    static const auto UEVR_NAME = std::format("Outer Worlds UEVR plugin [rev. {}]", MOD_VERSION);
-    static const auto NO_CHARACTER = std::format("No Player Character detected! Is it Main Menu?");
-    static const auto NO_PAWN = std::format("No Pawn detected!");
 
-    static constexpr auto window_w = 500.0f;
-    static constexpr auto window_h = 500.0f;
+void OuterWorldsMain::set_mouse_cursor() {
+    try {
+        SDK::UUserWidget* widget = API::get()->find_uobject<SDK::UUserWidget>(
+            L"GenericCrosshair_BP_C /Game/UI/HUD/Reticle/Reticle_BP.Reticle_BP_C.WidgetTree.Crosshair"
+        );
+        if (widget != nullptr) {
+            m_player_controller->SetMouseCursorWidget(SDK::EMouseCursor::Hand, widget);
+        }
+        else {
+            API::get()->log_warn("[main][set_mouse_cursor] Widget not found");
+        }
 
-    ImGui::SetNextWindowSize(ImVec2(window_w, window_h), ImGuiCond_::ImGuiCond_Once);
+        m_player_controller->DefaultMouseCursor = SDK::EMouseCursor::Hand;
+        m_player_controller->CurrentMouseCursor = SDK::EMouseCursor::Hand;
+    }
+    catch (...) {
+        API::get()->log_error("[main][set_mouse_cursor] Exception");
+    }
+}
 
-    if (ImGui::Begin(UEVR_NAME.c_str())) {
-        ImGui::PushItemWidth(200);
-        if (ImGui::Button("Save Configuration")) {
-            if (OuterWorldsPluginConfig::save_plugin_config()) {
-                ImGui::OpenPopup("succesful_save_popup");
+
+
+void OuterWorldsMain::on_draw_imgui() {
+    try {
+        if (!API::get()->param()->functions->is_drawing_ui()) {
+            return;
+        }
+
+        static const auto UEVR_NAME = std::format("Outer Worlds UEVR plugin [rev. {}]", MOD_VERSION);
+        static const auto NO_CHARACTER = std::format("No Player Character detected! Is it Main Menu?");
+        static const auto NO_PAWN = std::format("No Pawn detected!");
+
+        static constexpr auto window_w = 500.0f;
+        static constexpr auto window_h = 500.0f;
+
+        ImGui::SetNextWindowSize(ImVec2(window_w, window_h), ImGuiCond_::ImGuiCond_Once);
+
+        if (ImGui::Begin(UEVR_NAME.c_str())) {
+            ImGui::PushItemWidth(200);
+            if (ImGui::Button("Save Configuration")) {
+                if (OuterWorldsPluginConfig::save_plugin_config()) {
+                    ImGui::OpenPopup("succesful_save_popup");
+                }
+            }
+            if (ImGui::BeginPopup("succesful_save_popup"))
+            {
+                ImGui::Text("Configuration Saved!");
+                ImGui::EndPopup();
+            }
+
+            ImGui::PopItemWidth();
+
+            ImGui::SeparatorText("Debugging");
+            // game state section
+            ImGui::Checkbox("Show debug", &m_ui_option_show_debug_view);
+            if (m_ui_option_show_debug_view) {
+                ImGui::BeginGroup();
+                ImGui::BeginDisabled();
+
+                ImGui::InputText("Game State", (char*)GameStateName[m_game_state.value], 20);
+                ImGui::Checkbox("IsPaused", &m_is_game_paused.value);
+
+                ImGui::PushItemWidth(50);
+                ImGui::InputInt("XInput cb duration [microseconds]", &m_ui_xinput_duration, 0, 0);
+                ImGui::InputInt("Pre Engine Tick cb duration [microseconds]", &m_ui_pre_engine_tick_duration, 0, 0);
+                ImGui::PopItemWidth();
+                ImGui::EndDisabled();
+                ImGui::EndGroup();
             }
         }
-        if (ImGui::BeginPopup("succesful_save_popup"))
-        {
-            ImGui::Text("Configuration Saved!");
-            ImGui::EndPopup();
-        }
-
-        ImGui::PopItemWidth();
-
-        ImGui::SeparatorText("Debugging");
-        // game state section
-        ImGui::Checkbox("Show debug", &m_ui_option_show_debug_view);
-        if (m_ui_option_show_debug_view) {
-            ImGui::BeginGroup();
-            ImGui::BeginDisabled();
-            ImGui::PushItemWidth(50);
-            ImGui::InputInt("XInput cb duration [microseconds]", &m_ui_xinput_duration, 0, 0);
-            ImGui::InputInt("Pre Engine Tick cb duration [microseconds]", &m_ui_pre_engine_tick_duration, 0, 0);
-            ImGui::PopItemWidth();
-            ImGui::EndDisabled();
-            ImGui::EndGroup();
-        }
+        ImGui::End();
     }
-    ImGui::End();
+    catch (...) {
+        API::get()->log_error("[main][on_draw_imgui] Exception");
+    }
 }

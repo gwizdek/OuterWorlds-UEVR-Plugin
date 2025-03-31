@@ -14,13 +14,13 @@ OuterWorldsPluginConfig::~OuterWorldsPluginConfig() {
 }
 
 void OuterWorldsPluginConfig::load_plugin_config() {
-    API::get()->log_warn("[Plugin Config] Loading Config...");
+    API::get()->log_warn("[plugin_config] Loading Config...");
     static const auto config_filename = API::get()->get_persistent_dir(L"outer_worlds_vr_config.ini").string();
     mINI::INIFile mod_config_file(config_filename);
     mINI::INIStructure mod_config;
 
     if (!mod_config_file.read(mod_config)) {
-        API::get()->log_error("[Plugin Config] Missing config file. Creating config with default values");
+        API::get()->log_error("[plugin_config] Missing config file. Creating config with default values");
         save_plugin_config();
         return;
     }
@@ -33,12 +33,12 @@ void OuterWorldsPluginConfig::load_plugin_config() {
                 m_cfg_option_auto_pause_daytime = std::stoi(auto_pause_daytime) == 1;
             }
             catch (...) {
-                API::get()->log_error("[Plugin Config] Invalid Value: [general][auto_pause_daytime]");
+                API::get()->log_error("[plugin_config] Invalid Value: [general][auto_pause_daytime]");
             }
         }
     }
     else {
-        API::get()->log_error("[Plugin Config] Missing [general] config section");
+        API::get()->log_error("[plugin_config] Missing [general] config section");
     }
 
     if (mod_config.has("attachments")) {
@@ -49,7 +49,7 @@ void OuterWorldsPluginConfig::load_plugin_config() {
                 m_cfg_option_attach_ammo_readout = std::stoi(ammo_readout) == 1;
             }
             catch (...) {
-                API::get()->log_error("[Plugin Config] Invalid Value: [attachments][ammo_readout]");
+                API::get()->log_error("[plugin_config] Invalid Value: [attachments][ammo_readout]");
             }
         }
 
@@ -60,7 +60,7 @@ void OuterWorldsPluginConfig::load_plugin_config() {
                 m_cfg_option_attach_character_overview = std::stoi(character_overview) == 1;
             }
             catch (...) {
-                API::get()->log_error("[Plugin Config] Invalid Value: [attachments][character_overview]");
+                API::get()->log_error("[plugin_config] Invalid Value: [attachments][character_overview]");
             }
         }
 
@@ -71,7 +71,7 @@ void OuterWorldsPluginConfig::load_plugin_config() {
                 m_cfg_option_attach_compass = std::stoi(compass) == 1;
             }
             catch (...) {
-                API::get()->log_error("[Plugin Config] Invalid Value: [attachments][compass]");
+                API::get()->log_error("[plugin_config] Invalid Value: [attachments][compass]");
             }
         }
 
@@ -82,18 +82,18 @@ void OuterWorldsPluginConfig::load_plugin_config() {
                 m_cfg_option_attach_item_degradation = std::stoi(item_degradation) == 1;
             }
             catch (...) {
-                API::get()->log_error("[Plugin Config] Invalid Value: [attachments][item_degradation]");
+                API::get()->log_error("[plugin_config] Invalid Value: [attachments][item_degradation]");
             }
         }
     }
     else {
-        API::get()->log_error("[Plugin Config] Missing [attachments] config section");
+        API::get()->log_error("[plugin_config] Missing [attachments] config section");
     }
 }
 
 bool OuterWorldsPluginConfig::save_plugin_config() {
     try {
-        API::get()->log_warn("[Plugin Config] Saving Config...");
+        API::get()->log_warn("[plugin_config] Saving Config...");
         static const auto config_filename = API::get()->get_persistent_dir(L"outer_worlds_vr_config.ini").string();
         mINI::INIFile mod_config_file(config_filename);
         mINI::INIStructure mod_config;
@@ -108,7 +108,7 @@ bool OuterWorldsPluginConfig::save_plugin_config() {
         return mod_config_file.generate(mod_config, true);
     }
     catch (...) {
-        API::get()->log_error("[Plugin Config] Error saving config");
+        API::get()->log_error("[plugin_config] Error saving config");
     }
     return false;
 }

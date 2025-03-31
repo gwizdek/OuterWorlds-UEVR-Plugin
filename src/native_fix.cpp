@@ -2,6 +2,13 @@
 
 #include "native_fix.hpp"
 
+int OuterWorldsNativeFix::m_toggle_native_fix_counter = -1;
+bool OuterWorldsNativeFix::m_is_paused_daytime = false;
+
+OuterWorldsNativeFix::OuterWorldsNativeFix(OuterWorldsMain* main) {
+    m_main = main;
+};
+
 void OuterWorldsNativeFix::pause_daytime(bool pause) {
     try {
         if (m_main->get_player_character() != nullptr && m_main->get_player_character()->IsA(SDK::AIndianaPlayerCharacter_BP_C::StaticClass())) {
@@ -21,7 +28,7 @@ void OuterWorldsNativeFix::pause_daytime(bool pause) {
             }
         }
 
-        cycle_native_fix();
+        cycle(50.f);
         m_is_paused_daytime = pause;
     }
     catch (...) {
@@ -30,14 +37,12 @@ void OuterWorldsNativeFix::pause_daytime(bool pause) {
 }
 
 // turn native fix off, then wait a few ticks an turn it on
-void OuterWorldsNativeFix::cycle_native_fix() {
-    API::get()->log_warn("[native_fix][cycle_native_fix] Cycling...");
-    if (m_toggle_native_fix_counter == -1) {
-        m_toggle_native_fix_counter = 30;
-    }
+void OuterWorldsNativeFix::cycle(int delay) {
+    API::get()->log_warn("[native_fix][cycle] Cycling...");
+    m_toggle_native_fix_counter = delay;
 }
 
-void OuterWorldsNativeFix::handle_native_fix() {
+void OuterWorldsNativeFix::on_tick() {
     try {
         const UEVR_VRData* vr = API::get()->param()->vr;
 
