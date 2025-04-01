@@ -8,6 +8,13 @@ typedef enum VRWeaponType {
     WEAPON_TYPE_UNDEFINED
 } VRWeaponType;
 
+static std::map<VRWeaponType, const char*> VRWeaponTypeName = {
+    { WEAPON_TYPE_UNARMED, "Unarmed" },
+    { WEAPON_TYPE_RANGED, "Ranged" },
+    { WEAPON_TYPE_MELEE, "Melee" },
+    { WEAPON_TYPE_UNDEFINED, "Undefined" }
+};
+
 class OuterWorldsWeapon
 {
 private:
@@ -23,7 +30,7 @@ private:
     SDK::UStaticMeshComponent* m_scope_component{ nullptr };
 
     VRWeaponType m_weapon_type{ WEAPON_TYPE_UNDEFINED };
-    bool is_scoped_weapon{ false };
+    bool m_has_scope{ false };
 
 public:
     OuterWorldsWeapon(OuterWorldsMain* main, VRControllers* controllers, HandPreference hand_preference);
@@ -32,12 +39,15 @@ public:
     // setters
     void set_equipped_weapon(SDK::UWeapon* weapon);
     void set_weapon_type();
+    void set_materials();
+    void set_offset_component();
 
     void initialize();
+    void spawn_particle_pointer();
+    void update_particle_pointer();
     bool is_valid();
     void tick();
-    void fix_materials();
-    void set_offset_component();
     void destroy();
+    void draw_imgui();
 
 };

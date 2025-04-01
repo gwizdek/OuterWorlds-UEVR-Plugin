@@ -1,3 +1,5 @@
+#include "utility/Module.hpp"
+
 #include "plugin_utils.hpp"
 
 using namespace uevr;
@@ -81,6 +83,33 @@ void PluginUtils::destroy_actors_by_tag(SDK::UWorld* world, std::wstring actor_t
     }
     catch (...) {
         API::get()->log_error("[plugin_utils][destroy_actors_by_tag] Exception");
+        return;
+    }
+}
+
+void PluginUtils::load_asset(std::wstring asset_class_name, std::wstring resource_name) {
+    try {
+        API::get()->log_warn("[plugin_utils][load_asset] Loading Asset %ls", resource_name.c_str());
+
+        auto asset_class = API::get()->find_uobject<API::UClass>(asset_class_name);
+        if (asset_class == nullptr) {
+            API::get()->log_error("[plugin_utils][load_asset] Failed to find Asset class");
+            return;
+        }
+
+        auto mod = utility::get_executable();
+        auto static_load_asset_func_addr = (uintptr_t)mod + STATIC_LOAD_ASSET_OFFSET;
+        auto func = (StaticLoadObject_t)static_load_asset_func_addr;
+
+        SDK::UObject* asset = func(asset_class, nullptr, resource_name.c_str(), nullptr, 0, nullptr, true, nullptr);
+        if (!asset) {
+            API::get()->log_warn("[plugin_utils][load_asset] Failed to load Asset");
+            return;
+        }
+        API::get()->log_warn("[plugin_utils][load_asset] Successfully Loaded Asset");
+    }
+    catch (...) {
+        API::get()->log_error("[plugin_utils][load_asset] Exception");
         return;
     }
 }

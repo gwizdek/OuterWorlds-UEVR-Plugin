@@ -19,7 +19,6 @@ OuterWorldsMain::OuterWorldsMain() {
         m_vr_controllers = new VRControllers();
         m_vr_weapon = new OuterWorldsWeapon(this, m_vr_controllers, RIGHT_HANDED);
         m_vr_hud = new OuterWorldsHUD(this);
-        //m_native_fix = new OuterWorldsNativeFix(this);
     }
     catch (...) {
         API::get()->log_error("[main][constructor] Exception");
@@ -41,11 +40,12 @@ void OuterWorldsMain::on_xinput(XINPUT_STATE* state) {
 void OuterWorldsMain::on_tick() {
     handle_level_change();
     handle_game_state();
+    handle_mod_events();
     OuterWorldsNativeFix::on_tick();
     fix_ledger();
     fix_workbench();
-    handle_mod_events();
     handle_crouch();
+    handle_weapon();
 
     //API::get()->log_warn("[Main] Tick");
     if (is_valid()) {
@@ -114,12 +114,6 @@ void OuterWorldsMain::prepare_state() {
         m_is_game_paused.set_value(m_world != nullptr ? SDK::UGameplayStatics::IsGamePaused(m_world) : true);
 
         if (m_player_character != nullptr) {
-            // equipped weapon
-            auto equipment = static_cast<SDK::AIndianaPlayerCharacter_BP_C*>(m_player_character)->Equipment;
-            if (equipment != nullptr) {
-                m_vr_weapon->set_equipped_weapon(equipment->GetEquippedWeapon());
-            }
-
             // conversation camera
             m_is_conversation_camera_active.set_value(m_player_character->ConversationCameraComponent->CameraComponent->IsActive());
 
@@ -336,6 +330,10 @@ void OuterWorldsMain::handle_level_change() {
             API::get()->log_warn("[main][handle_level_change] New Level: %s", level_name.c_str());
 
             // reinitialize
+            PluginUtils::load_asset(
+                L"Class /Script/Engine.ParticleSystem",
+                L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball.PS_Plasma_Ball"
+            );
             m_vr_controllers->initialize();
             m_vr_weapon->initialize();
 
@@ -399,6 +397,16 @@ void OuterWorldsMain::handle_mod_events() {
 void OuterWorldsMain::handle_crouch() {
     if (m_is_crouched.has_changed()) {
         PluginUtils::reset_height(0.f);
+    }
+}
+
+void OuterWorldsMain::handle_weapon() {
+    // equipped weapon
+    if (SDK::UKismetSystemLibrary::IsValid(m_player_character)) {
+        auto equipment = static_cast<SDK::AIndianaPlayerCharacter_BP_C*>(m_player_character)->Equipment;
+        if (equipment != nullptr) {
+            m_vr_weapon->set_equipped_weapon(equipment->GetEquippedWeapon());
+        }
     }
 }
 
@@ -589,13 +597,21 @@ void OuterWorldsMain::on_draw_imgui() {
             if (m_ui_option_show_debug_view) {
                 ImGui::BeginGroup();
                 ImGui::BeginDisabled();
-
                 ImGui::InputText("Game State", (char*)GameStateName[m_game_state.value], 20);
                 ImGui::Checkbox("IsPaused", &m_is_game_paused.value);
+                ImGui::EndDisabled();
+                ImGui::EndGroup();
 
+                if (m_vr_weapon != nullptr) {
+                    m_vr_weapon->draw_imgui();
+                }
+
+                ImGui::SeparatorText("Timers");
+                ImGui::BeginGroup();
+                ImGui::BeginDisabled();
                 ImGui::PushItemWidth(50);
-                ImGui::InputInt("XInput cb duration [microseconds]", &m_ui_xinput_duration, 0, 0);
-                ImGui::InputInt("Pre Engine Tick cb duration [microseconds]", &m_ui_pre_engine_tick_duration, 0, 0);
+                ImGui::InputInt("XInput duration", &m_ui_xinput_duration, 0, 0);
+                ImGui::InputInt("PreEngineTick duration", &m_ui_pre_engine_tick_duration, 0, 0);
                 ImGui::PopItemWidth();
                 ImGui::EndDisabled();
                 ImGui::EndGroup();

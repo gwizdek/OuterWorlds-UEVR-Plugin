@@ -132,6 +132,7 @@ public:
     void handle_game_state();
     void handle_mod_events();
     void handle_crouch();
+    void handle_weapon();
 
     // fixes
     void fix_player_highlighter();
