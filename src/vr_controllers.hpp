@@ -37,7 +37,7 @@ public:
     bool is_valid();
     bool is_initialized() const { return m_initialized; };
     bool initialize();
-    void clear_pointers();
+    void cleanup_pointers();
     void destroy_actors();
-    static void cleanup();
+    static void cleanup_actors();
 };

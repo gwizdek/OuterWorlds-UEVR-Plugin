@@ -17,7 +17,7 @@ void OuterWorldsPlugin::on_initialize() {
     PLUGIN_LOG_ONCE("Plugin Initializing...");
     
     // cleanup stale actors
-    OuterWorldsMain::cleanup();
+    OuterWorldsMain::cleanup_actors();
     // plugin configuration
     OuterWorldsPluginConfig::load_plugin_config();
 

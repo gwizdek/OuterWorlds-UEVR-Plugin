@@ -4,7 +4,6 @@
 using namespace uevr;
 
 VRControllers::~VRControllers() {
-    clear_pointers();
 };
 
 bool VRControllers::initialize() {
@@ -147,7 +146,7 @@ bool VRControllers::is_valid() {
 }
 
 
-void VRControllers::clear_pointers() {
+void VRControllers::cleanup_pointers() {
     // actors
     m_right_hand_actor = nullptr;
     m_left_hand_actor = nullptr;
@@ -159,7 +158,7 @@ void VRControllers::clear_pointers() {
     m_hmd_component = nullptr;
 }
 
-
+// unused
 void VRControllers::destroy_actors() {
     try {
         API::get()->log_warn("[vr_controllers][destroy_actors] Destroying actors");
@@ -184,7 +183,7 @@ void VRControllers::destroy_actors() {
     }
 }
 
-void VRControllers::cleanup() {
+void VRControllers::cleanup_actors() {
     try {
         auto world = SDK::UWorld::GetWorld();
         if (!SDK::UKismetSystemLibrary::IsValid(world)) {

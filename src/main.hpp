@@ -58,7 +58,7 @@ class OuterWorldsNativeFix;
 class OuterWorldsMain
 {
 private:
-    const char* MOD_VERSION = "0.1.0";
+    const char* MOD_VERSION = "0.2.0";
 
     VRControllers* m_vr_controllers{ nullptr };
     OuterWorldsWeapon* m_vr_weapon{ nullptr };
@@ -107,7 +107,8 @@ public:
     void on_xinput(XINPUT_STATE* state);
     void on_draw_imgui();
     bool is_valid();
-    static void cleanup();
+    void cleanup_pointers();
+    static void cleanup_actors();
 
     void prepare_pointers();
     void prepare_state();
@@ -116,8 +117,9 @@ public:
     // getters
     bool get_test_value() { return m_my_test_value; };
     bool get_ui_option_show_debug_view() { return m_ui_option_show_debug_view; };
+    VRControllers* get_vr_controllers() { return m_vr_controllers; };
     OuterWorldsWeapon* get_weapon() { return m_vr_weapon; };
-    OuterWorldsHUD* get_hud() { return m_vr_hud; };
+    SDK::UHUDWidget* get_hud() { return m_hud; };
     SDK::AIndianaPlayerCharacter* get_player_character() { return m_player_character; };
     
     // setters
@@ -125,6 +127,7 @@ public:
     void set_ui_pre_engine_tick_duration(int value) { m_ui_pre_engine_tick_duration = value; };
     void set_idle_camera_time(float seconds_to_wait);
     void set_mouse_cursor();
+    void set_ability_overview_visibility(bool visible);
 
     // handlers
     void handle_controller_input(XINPUT_STATE* state);

@@ -1,9 +1,6 @@
 #pragma once
-
 #include "uevr/API.hpp"
 #include "indiana/SDK/UMG_classes.hpp"
-
-//using namespace uevr;
 
 class AttachedWidget
 {

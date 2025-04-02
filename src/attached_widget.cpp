@@ -3,7 +3,7 @@
 using namespace uevr;
 
 AttachedWidget::~AttachedWidget() {
-    API::get()->log_warn("[AttachedWidget] Destructor");
+    API::get()->log_warn("[attached_widget] Destructor");
 }
 
 SDK::FTransform AttachedWidget::get_transform() {
@@ -43,19 +43,19 @@ void AttachedWidget::set_local_offset(float offset) {
 }
 
 bool AttachedWidget::attach(SDK::AActor* hand_actor, SDK::UUserWidget* widget, SDK::FTransform transform, SDK::FVector2D draw_size, const char* widget_name) {
-    API::get()->log_warn("[AttachedWidget] Attaching [%s]", widget_name);
+    API::get()->log_warn("[attached_widget][attach] Attaching %s", widget_name);
     if (hand_actor == nullptr || widget == nullptr) {
-        API::get()->log_warn("[AttachedWidget] [%s] Pointers not valid", widget_name);
+        API::get()->log_warn("[attached_widget][attach] %s Pointers not valid", widget_name);
         return false;
     }
 
-    if (m_widget_component != nullptr) {
-        API::get()->log_warn("[AttachedWidget] [%s] Already attached", widget_name);
-        return false;
-    }
+    //if (m_widget_component != nullptr) {
+    //    API::get()->log_warn("[attached_widget][attach] [%s] Already attached", widget_name);
+    //    return false;
+    //}
 
     if (!SDK::UKismetSystemLibrary::IsValid(widget)) {
-        API::get()->log_warn("[AttachedWidget] [%s] Invalid widget", widget_name);
+        API::get()->log_warn("[attached_widget][attach] %s Invalid widget", widget_name);
         return false;
     }
 
@@ -66,7 +66,7 @@ bool AttachedWidget::attach(SDK::AActor* hand_actor, SDK::UUserWidget* widget, S
         );
 
     if (m_widget_component == nullptr) {
-        API::get()->log_warn("[AttachedWidget] [%s] Failed to attach component", widget_name);
+        API::get()->log_warn("[attached_widget][attach] %s Failed to attach component", widget_name);
         return false;
     }
 
@@ -88,7 +88,7 @@ bool AttachedWidget::attach(SDK::AActor* hand_actor, SDK::UUserWidget* widget, S
 
     hand_actor->FinishAddComponent(m_widget_component, false, m_widget_transform);
 
-    API::get()->log_warn("[AttachedWidget] [%s] Successfully Attached", widget_name);
+    API::get()->log_warn("[attached_widget][attach] %s Successfully Attached", widget_name);
 
     return true;
 }

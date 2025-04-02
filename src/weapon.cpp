@@ -7,19 +7,25 @@
 
 using namespace uevr;
 
-OuterWorldsWeapon::OuterWorldsWeapon(OuterWorldsMain* main, VRControllers* controllers, HandPreference hand_preference) {
+OuterWorldsWeapon::OuterWorldsWeapon(OuterWorldsMain* main, HandPreference hand_preference) {
     m_main = main;
-    m_vr_controllers = controllers;
     m_hand_preference = hand_preference;
 }
 
 bool OuterWorldsWeapon::is_valid() {
-    return true;
+    if (
+        m_equipped_weapon != nullptr &&
+        m_particle_pointer_component != nullptr &&
+        m_particle_pointer_offset_component != nullptr
+        ) {
+        return true;
+    }
+    return false;
 }
 
 void OuterWorldsWeapon::initialize() {
     try {
-        if (m_vr_controllers != nullptr && m_vr_controllers->is_valid()) {
+        if (m_main->get_vr_controllers() != nullptr && m_main->get_vr_controllers()->is_valid()) {
             SDK::FTransform zero_transform{
                 .Rotation = { 0.f, 0.f, 0.f, 1.f },
                 .Translation = { 0.f, 0.f, 0.f },
@@ -27,17 +33,17 @@ void OuterWorldsWeapon::initialize() {
             };
             // particle pointer offset component
             m_particle_pointer_offset_component = static_cast<SDK::USceneComponent*>(
-                m_vr_controllers->get_right_hand_actor()->AddComponentByClass(SDK::USceneComponent::StaticClass(), false, zero_transform, true)
+                m_main->get_vr_controllers()->get_right_hand_actor()->AddComponentByClass(SDK::USceneComponent::StaticClass(), false, zero_transform, true)
                 );
             if (m_particle_pointer_offset_component == nullptr) {
                 API::get()->log_error("[weapon][initialize] Failed to add Particle Pointer Offset component");
                 return;
             }
-            m_vr_controllers->get_right_hand_actor()->FinishAddComponent(m_particle_pointer_offset_component, false, zero_transform);
+            m_main->get_vr_controllers()->get_right_hand_actor()->FinishAddComponent(m_particle_pointer_offset_component, false, zero_transform);
             API::get()->log_warn("[weapon][initialize] Added Particle Pointer Offset component");
 
             if (!m_particle_pointer_offset_component->K2_AttachTo(
-                m_vr_controllers->get_rh_controller_component(),
+                m_main->get_vr_controllers()->get_rh_controller_component(),
                 SDK::UKismetStringLibrary::Conv_StringToName(L"None"),
                 SDK::EAttachLocation::KeepRelativeOffset,
                 false
@@ -54,19 +60,27 @@ void OuterWorldsWeapon::initialize() {
     }
 }
 
+void OuterWorldsWeapon::cleanup_pointers() {
+    API::get()->log_warn("[weapon][cleanup_pointers] Cleanup");
+
+    m_particle_pointer_component = nullptr;
+    m_particle_pointer_offset_component = nullptr;
+    m_equipped_weapon = nullptr;
+    m_weapon_type = WEAPON_TYPE_UNKNOWN;
+    m_has_scope = false;
+}
+
 void OuterWorldsWeapon::tick() {
     try {
         if (m_main != nullptr) {
 
             // when loading a save uevr has problem rendering a frame and trigering these setters in set_equipped weapon
-            if (m_weapon_type == WEAPON_TYPE_UNDEFINED) {
+            if (m_weapon_type == WEAPON_TYPE_UNKNOWN) {
                 set_materials();
                 set_weapon_type();
             }
 
-            set_offset_component();
             update_particle_pointer();
-            //API::get()->log_warn("[Weapon][tick] Crouched: %s", m_common->get_test_value() ? "YES" : "NO");
         }
     }
     catch (...) {
@@ -80,7 +94,6 @@ void OuterWorldsWeapon::set_equipped_weapon(SDK::UWeapon* weapon) {
         API::get()->log_warn("[weapon][set_equipped_weapon] New Weapon: %s", weapon->GetFullName().c_str());
         set_materials();
         set_weapon_type();
-        set_offset_component();
     }
 }
 
@@ -134,13 +147,13 @@ void OuterWorldsWeapon::set_weapon_type() {
     try {
         if (m_equipped_weapon != nullptr && m_equipped_weapon->SkeletalMeshComponent != nullptr) {
             auto weapon_mode = m_equipped_weapon->GetCurrentMode();
-            API::get()->log_warn("[weapon][set_weapon_type] Weapon Mode: %s", weapon_mode->GetName().c_str());
-            
             if (
                 weapon_mode->IsA(SDK::URangedMode::StaticClass()) ||
                 SDK::UKismetMathLibrary::ClassIsChildOf(weapon_mode->StaticClass(), SDK::URangedMode::StaticClass())
                 ) {
                 m_weapon_type = WEAPON_TYPE_RANGED;
+
+                // remove extra fov adjustment for fine aim
                 static_cast<SDK::URangedMode*>(weapon_mode)->FineAimFovAdjustment = 0.f;
                 static_cast<SDK::URangedMode*>(weapon_mode)->FineAimLookStickRateMultiplier = 0.00001f;
 
@@ -168,16 +181,18 @@ void OuterWorldsWeapon::set_weapon_type() {
             }
         }
         else {
-            m_weapon_type = WEAPON_TYPE_UNDEFINED;
+            m_weapon_type = WEAPON_TYPE_UNKNOWN;
             m_has_scope = false;
         }
+
+        API::get()->log_warn("[weapon][set_weapon_type] Weapon Type: %s", VRWeaponTypeName[m_weapon_type]);
     }
     catch (...) {
         API::get()->log_error("[weapon][set_weapon_type] Exception");
     }
 }
 
-void OuterWorldsWeapon::set_offset_component() {
+void OuterWorldsWeapon::set_offset_component_relative_location() {
     static SDK::FHitResult h_result{};
     // offset FPVCamera to match weapon barrel
     try {
@@ -197,19 +212,12 @@ void OuterWorldsWeapon::set_offset_component() {
     }
 }
 
-//void set_particle_pointer_visibility(bool visible) {
-//    if (m_particle_pointer_component != nullptr) {
-//        m_particle_pointer_component->SetVisibility(visible, false);
-//    }
-//}
-//
-//float get_line_trace_distance() {
-//    return m_reusable_result.Distance;
-//}
-//
-//void set_particle_pointer_offset(SDK::FVector offset) {
-//    m_particle_pointer_offset = offset;
-//}
+void OuterWorldsWeapon::set_particle_pointer_visibility(bool visible) {
+    if (m_particle_pointer_component != nullptr) {
+        m_particle_pointer_component->SetVisibility(visible, false);
+    }
+}
+
 //
 //void set_scope_offset(SDK::FVector offset) {
 //    static SDK::FHitResult h_result{};
@@ -295,6 +303,7 @@ void OuterWorldsWeapon::update_particle_pointer() {
         static SDK::FHitResult h_result{};
         static SDK::FHitResult lt_result{};
         if (m_particle_pointer_offset_component != nullptr) {
+            set_offset_component_relative_location();
 
             //m_particle_pointer_offset_component->K2_SetRelativeLocation(m_particle_pointer_offset, false, &h_result, false);
             auto start = m_particle_pointer_offset_component->K2_GetComponentLocation();
@@ -367,7 +376,7 @@ void OuterWorldsWeapon::update_particle_pointer() {
         }
     }
     catch (...) {
-        API::get()->log_error("[VR HUD][update_particle_pointer] Exception");
+        API::get()->log_error("[weapon][update_particle_pointer] Exception");
     }
 }
 
@@ -378,19 +387,10 @@ void OuterWorldsWeapon::draw_imgui() {
     ImGui::BeginGroup();
     ImGui::BeginDisabled();
 
-    ImGui::InputText("Name", (m_equipped_weapon != nullptr) ? (char*)m_equipped_weapon->GetName().c_str() : (char*)"NONE", 20);
+    ImGui::InputText("Name", (m_equipped_weapon != nullptr) ? (char*)m_equipped_weapon->GetName().c_str() : (char*)"Unknown", 20);
     ImGui::InputText("Type", (char*)VRWeaponTypeName[m_weapon_type], 20);
     ImGui::Checkbox("Has Scope", &m_has_scope);
 
     ImGui::EndDisabled();
     ImGui::EndGroup();
-}
-
-void OuterWorldsWeapon::destroy() {
-    //API::get()->log_warn("[VR HUD] :: Destroying actors");
-
-    //if (SDK::UKismetSystemLibrary::IsValid(m_hmd_actor) && m_weapon_scope_actor->IsA(SDK::AActor::StaticClass())) {
-    //    m_weapon_scope_actor->K2_DestroyActor();
-    //    API::get()->log_warn("[VR HUD] :: Weapon Scope Actor destroyed");
-    //}
 }

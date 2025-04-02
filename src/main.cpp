@@ -17,7 +17,7 @@ OuterWorldsMain::OuterWorldsMain() {
     try {
         API::get()->log_warn("[main] Constructor");
         m_vr_controllers = new VRControllers();
-        m_vr_weapon = new OuterWorldsWeapon(this, m_vr_controllers, RIGHT_HANDED);
+        m_vr_weapon = new OuterWorldsWeapon(this, RIGHT_HANDED);
         m_vr_hud = new OuterWorldsHUD(this);
     }
     catch (...) {
@@ -38,8 +38,8 @@ void OuterWorldsMain::on_xinput(XINPUT_STATE* state) {
 }
 
 void OuterWorldsMain::on_tick() {
-    handle_level_change();
     handle_game_state();
+    handle_level_change();
     handle_mod_events();
     OuterWorldsNativeFix::on_tick();
     fix_ledger();
@@ -48,7 +48,7 @@ void OuterWorldsMain::on_tick() {
     handle_weapon();
 
     //API::get()->log_warn("[Main] Tick");
-    if (is_valid()) {
+    if (m_vr_weapon->is_valid()) {
         m_vr_weapon->tick();
     }
 }
@@ -69,9 +69,16 @@ bool OuterWorldsMain::is_valid() {
     }
 }
 
-void OuterWorldsMain::cleanup() {
+void OuterWorldsMain::cleanup_pointers() {
     API::get()->log_warn("[main][cleanup] Starting Cleanup");
-    VRControllers::cleanup();
+    m_vr_controllers->cleanup_pointers();
+    m_vr_weapon->cleanup_pointers();
+    //m_vr_hud->cleanup_pointers();
+}
+
+void OuterWorldsMain::cleanup_actors() {
+    API::get()->log_warn("[main][cleanup] Starting Cleanup");
+    VRControllers::cleanup_actors();
 }
 
 // -------------------------------------------------------------------------------------
@@ -157,16 +164,16 @@ void OuterWorldsMain::prepare_game_state() {
         }
 
         if (
-            m_ui_ledger_open_state.value == SDK::EWidgetOpenState::TransitioningToMaximized ||
-            m_ui_ledger_open_state.value == SDK::EWidgetOpenState::Maximized
+            m_ui_ledger_open_state.value == SDK::EWidgetOpenState::Maximized ||
+            m_ui_ledger_open_state.value == SDK::EWidgetOpenState::TransitioningToMaximized
             ) {
             m_game_state.set_value(GAME_STATE_LEDGER);
             return;
         }
 
         if (
-            m_ui_workbench_open_state.value == SDK::EWidgetOpenState::TransitioningToMaximized ||
-            m_ui_workbench_open_state.value == SDK::EWidgetOpenState::Maximized
+            m_ui_workbench_open_state.value == SDK::EWidgetOpenState::Maximized ||
+            m_ui_workbench_open_state.value == SDK::EWidgetOpenState::TransitioningToMaximized
             ) {
             m_game_state.set_value(GAME_STATE_WORKBENCH);
             return;
@@ -226,7 +233,6 @@ void OuterWorldsMain::handle_game_state() {
 
             switch (m_game_state.value) {
                 case GAME_STATE_MAIN_MENU:
-                    API::UObjectHook::set_disabled(true);
                     vr->set_aim_method(0);
                     vr->set_decoupled_pitch_enabled(false);
                     vr->set_mod_value("VR_CameraForwardOffset", "0.000000");
@@ -238,7 +244,9 @@ void OuterWorldsMain::handle_game_state() {
                     vr->set_mod_value("VR_DecoupledPitchUIAdjust", "false");
                     PluginUtils::reset_height(0.f);
                     vr->recenter_view();
-                    OuterWorldsNativeFix::cycle(50);
+                    API::UObjectHook::set_disabled(true);
+                    vr->set_mod_value("VR_NativeStereoFix", "false");
+                    //OuterWorldsNativeFix::cycle(50);
                     break;
 
                 case GAME_STATE_PAUSE_MENU:
@@ -270,10 +278,11 @@ void OuterWorldsMain::handle_game_state() {
                     vr->set_mod_value("VR_NativeStereoFix", "true");
                     PluginUtils::reset_height(0.f);
                     vr->recenter_view();
+                    m_vr_weapon->set_particle_pointer_visibility(true);
                     break;
 
                 case GAME_STATE_CONVERSATION:
-                    API::UObjectHook::set_disabled(true);
+                    API::UObjectHook::set_disabled(false);
                     vr->set_aim_method(0);
                     vr->set_mod_value("VR_CameraForwardOffset", "0.000000");
                     vr->set_mod_value("VR_CameraUpOffset", "0.000000");
@@ -281,8 +290,9 @@ void OuterWorldsMain::handle_game_state() {
                     vr->set_mod_value("UI_Size", "1.000000");
                     vr->set_mod_value("UI_Y_Offset", "0.00000");
                     vr->set_mod_value("VR_RoomscaleMovement", "false");
-                    vr->set_mod_value("VR_DecoupledPitchUIAdjust", "false");
+                    vr->set_mod_value("VR_DecoupledPitchUIAdjust", "true");
                     vr->recenter_view();
+                    m_vr_weapon->set_particle_pointer_visibility(false);
                     break;
 
                 case GAME_STATE_COMPUTER_TERMINAL:
@@ -329,17 +339,26 @@ void OuterWorldsMain::handle_level_change() {
             auto level_name = m_level.value->GetFullName();
             API::get()->log_warn("[main][handle_level_change] New Level: %s", level_name.c_str());
 
-            // reinitialize
-            PluginUtils::load_asset(
-                L"Class /Script/Engine.ParticleSystem",
-                L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball.PS_Plasma_Ball"
-            );
-            m_vr_controllers->initialize();
-            m_vr_weapon->initialize();
+            if (m_game_state.value != GAME_STATE_MAIN_MENU) {
+                API::get()->log_warn("[main][handle_level_change] Initialize components");
+                // reinitialize
+                PluginUtils::load_asset(
+                    L"Class /Script/Engine.ParticleSystem",
+                    L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball.PS_Plasma_Ball"
+                );
+                m_vr_controllers->initialize();
+                m_vr_weapon->initialize();
+                m_vr_hud->initialize();
 
-            set_idle_camera_time(1000);
-            fix_player_highlighter();
-            fix_cinematic_camera();
+                set_idle_camera_time(1000);
+                fix_player_highlighter();
+                fix_cinematic_camera();
+                set_ability_overview_visibility(false);
+            }
+            else {
+                API::get()->log_warn("[main][handle_level_change] Components cleanup");
+                cleanup_pointers();
+            }
             //// check if it's the main menu
             //if (level_name.ends_with(".00_Menu.PersistentLevel")) {
             //}
@@ -375,7 +394,7 @@ void OuterWorldsMain::handle_level_change() {
         }
     }
     catch (...) {
-        API::get()->log_error("[handle_level_change] Exception");
+        API::get()->log_error("[main][handle_level_change] Exception");
     }
 }
 
@@ -520,8 +539,12 @@ void OuterWorldsMain::fix_workbench() {
     }
 }
 
-
-
+void OuterWorldsMain::set_ability_overview_visibility(bool visible) {
+    if (m_hud != nullptr) {
+        m_hud->AbilityOverviewGamepad->SetVisibility(visible ? SDK::ESlateVisibility::Visible : SDK::ESlateVisibility::Hidden);
+        m_hud->AbilityOverview->SetVisibility(visible ? SDK::ESlateVisibility::Visible : SDK::ESlateVisibility::Hidden);
+    }
+}
 
 // -------------------------------------------------------------------------------------
 // setters
