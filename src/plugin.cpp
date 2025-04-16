@@ -1,5 +1,4 @@
 #include "plugin.hpp"
-#include "plugin_config.hpp"
 #include "main.hpp"
 
 using namespace uevr;
@@ -18,8 +17,6 @@ void OuterWorldsPlugin::on_initialize() {
     
     // cleanup stale actors
     OuterWorldsMain::cleanup_actors();
-    // plugin configuration
-    OuterWorldsPluginConfig::load_plugin_config();
 
     m_main = new OuterWorldsMain();
 }
@@ -83,7 +80,7 @@ void OuterWorldsPlugin::on_pre_engine_tick(API::UGameEngine* engine, float delta
             m_xinput_cb_processed = false;
         }
 
-        m_main->on_tick();
+        m_main->on_tick(delta);
 
         // calculate cb duration
         if (m_main->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {

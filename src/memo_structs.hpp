@@ -5,8 +5,6 @@
 
 using namespace uevr;
 
-
-
 template<class T>
 struct MemoProperty
 {

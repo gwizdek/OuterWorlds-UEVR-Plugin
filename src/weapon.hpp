@@ -32,7 +32,7 @@ private:
     bool m_has_scope{ false };
 
 public:
-    OuterWorldsWeapon(OuterWorldsMain* main, HandPreference hand_preference);
+    OuterWorldsWeapon(OuterWorldsMain* main);
     virtual ~OuterWorldsWeapon() {};
 
     // setters
@@ -42,12 +42,11 @@ public:
     void set_offset_component_relative_location();
     void set_particle_pointer_visibility(bool visible);
 
-    void initialize();
+    void initialize(HandPreference hand_preference);
+    void cleanup_pointers();
+    bool is_valid();
+    void on_tick();
+    void on_draw_imgui();
     void spawn_particle_pointer();
     void update_particle_pointer();
-    bool is_valid();
-    void tick();
-    void cleanup_pointers();
-    void draw_imgui();
-
 };

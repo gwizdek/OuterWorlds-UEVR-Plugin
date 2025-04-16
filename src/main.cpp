@@ -7,8 +7,7 @@
 #include "main.hpp"
 #include "weapon.hpp"
 #include "hud.hpp"
-#include "plugin_config.hpp"
-#include "native_fix.hpp"
+#include "flicker_fixer.hpp"
 #include "plugin_utils.hpp"
 
 using namespace uevr;
@@ -17,8 +16,9 @@ OuterWorldsMain::OuterWorldsMain() {
     try {
         API::get()->log_warn("[main] Constructor");
         m_vr_controllers = new VRControllers();
-        m_vr_weapon = new OuterWorldsWeapon(this, RIGHT_HANDED);
+        m_vr_weapon = new OuterWorldsWeapon(this);
         m_vr_hud = new OuterWorldsHUD(this);
+        m_flicker_fixer = new OuterWorldsFlickerFixer(this);
     }
     catch (...) {
         API::get()->log_error("[main][constructor] Exception");
@@ -31,37 +31,37 @@ OuterWorldsMain::~OuterWorldsMain() {
     m_vr_hud->~OuterWorldsHUD();
     m_vr_weapon->~OuterWorldsWeapon();
     m_vr_controllers->~VRControllers();
+    m_flicker_fixer->~OuterWorldsFlickerFixer();
 }
 
 void OuterWorldsMain::on_xinput(XINPUT_STATE* state) {
     handle_controller_input(state);
 }
 
-void OuterWorldsMain::on_tick() {
+void OuterWorldsMain::on_tick(float delta) {
     handle_game_state();
     handle_level_change();
     handle_mod_events();
-    OuterWorldsNativeFix::on_tick();
     fix_ledger();
     fix_workbench();
     handle_crouch();
     handle_weapon();
 
-    //API::get()->log_warn("[Main] Tick");
-    if (m_vr_weapon->is_valid()) {
-        m_vr_weapon->tick();
+    if (m_flicker_fixer->is_valid()) {
+        m_flicker_fixer->on_tick(delta);
     }
+
+    if (m_vr_weapon->is_valid()) {
+        m_vr_weapon->on_tick();
+    }
+
+    // add delta time to dual state inputs
+    m_gamepad_left_thumb.add_delta(delta);
 }
 
 bool OuterWorldsMain::is_valid() {
     try {
-        if (
-            !m_vr_controllers->is_valid() ||
-            !m_vr_weapon->is_valid()
-            ) {
-            return false;
-        }
-        return true;
+        return m_vr_controllers->is_valid() && m_vr_weapon->is_valid();
     }
     catch (...) {
         API::get()->log_error("[main][is_valid] Exception");
@@ -70,15 +70,17 @@ bool OuterWorldsMain::is_valid() {
 }
 
 void OuterWorldsMain::cleanup_pointers() {
-    API::get()->log_warn("[main][cleanup] Starting Cleanup");
+    API::get()->log_warn("[main][cleanup] Starting Pointers Cleanup");
     m_vr_controllers->cleanup_pointers();
     m_vr_weapon->cleanup_pointers();
+    m_flicker_fixer->cleanup_pointers();
     //m_vr_hud->cleanup_pointers();
 }
 
 void OuterWorldsMain::cleanup_actors() {
-    API::get()->log_warn("[main][cleanup] Starting Cleanup");
+    API::get()->log_warn("[main][cleanup] Starting Actors Cleanup");
     VRControllers::cleanup_actors();
+    OuterWorldsFlickerFixer::cleanup_actors();
 }
 
 // -------------------------------------------------------------------------------------
@@ -218,7 +220,9 @@ void OuterWorldsMain::handle_controller_input(XINPUT_STATE* state) {
 
 
     if (m_gamepad_left_thumb.is_long_pressed(2.f)) {
-        OuterWorldsNativeFix::cycle(50);
+        if (m_flicker_fixer->is_valid()) {
+            m_flicker_fixer->cycle(50);
+        }
     }
 }
 
@@ -347,50 +351,27 @@ void OuterWorldsMain::handle_level_change() {
                     L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball.PS_Plasma_Ball"
                 );
                 m_vr_controllers->initialize();
-                m_vr_weapon->initialize();
+                m_vr_weapon->initialize(RIGHT_HANDED);
                 m_vr_hud->initialize();
+                m_flicker_fixer->spawn_flicker_fixer();
+
+                load_mod_config();
 
                 set_idle_camera_time(1000);
                 fix_player_highlighter();
                 fix_cinematic_camera();
                 set_ability_overview_visibility(false);
+
+                //if (m_pawn.value != nullptr && !m_pawn.value->IsA(SDK::ADefaultPawn::StaticClass())) {
+                //    if (m_config->m_cfg_option_auto_pause_daytime) {
+                //        pause_daytime(true);
+                //    }
+                //}
             }
             else {
                 API::get()->log_warn("[main][handle_level_change] Components cleanup");
                 cleanup_pointers();
             }
-            //// check if it's the main menu
-            //if (level_name.ends_with(".00_Menu.PersistentLevel")) {
-            //}
-            //else {
-            //    // initialize hud
-            //    m_mod_events.insert(MOD_EVENT_VR_HUD_INITIALIZE);
-
-            //    vr->set_aim_method(2);
-            //    vr->set_snap_turn_enabled(true);
-            //    vr->set_decoupled_pitch_enabled(true);
-            //    vr->set_mod_value("VR_RoomscaleMovement", "true");
-            //    API::UObjectHook::set_disabled(false);
-            //}
-
-            // schedule vr hud init as level change has destroyed our custom actors
-            //API::get()->log_warn("Inserting Event: MOD_EVENT_VR_HUD_INITIALIZE");
-            //m_mod_events.insert(MOD_EVENT_VR_HUD_INITIALIZE);
-
-            //vr->set_aim_method(2);
-            //vr->set_decoupled_pitch_enabled(true);
-            //vr->set_mod_value("VR_RoomscaleMovement", "true");
-            //vr->set_mod_value("UI_Distance", "2.000000");
-            //vr->set_mod_value("UI_Size", "1.200000");
-            //API::UObjectHook::set_disabled(false);
-            //PluginUtils::reset_height(0.f);
-
-            //if (m_pawn.value != nullptr && !m_pawn.value->IsA(SDK::ADefaultPawn::StaticClass())) {
-            //    if (m_config->m_cfg_option_auto_pause_daytime) {
-            //        pause_daytime(true);
-            //    }
-            //}
-
         }
     }
     catch (...) {
@@ -582,8 +563,18 @@ void OuterWorldsMain::set_mouse_cursor() {
     }
 }
 
+// -------------------------------------------------------------------------------------
+// hooks
+// -------------------------------------------------------------------------------------
+//Weapon trace hook
+//void OuterWorldsMain::hook_onfire_fn() {
+//    m_onfire_hook_id = hook_vtable_fn(L"Class /Script/GunfireRuntime.RangedWeapon", L"OnFire", on_get_onfire, (void**)&m_onfire_hook_fn);
+//}
 
 
+// -------------------------------------------------------------------------------------
+// ImGui
+// -------------------------------------------------------------------------------------
 void OuterWorldsMain::on_draw_imgui() {
     try {
         if (!API::get()->param()->functions->is_drawing_ui()) {
@@ -602,7 +593,7 @@ void OuterWorldsMain::on_draw_imgui() {
         if (ImGui::Begin(UEVR_NAME.c_str())) {
             ImGui::PushItemWidth(200);
             if (ImGui::Button("Save Configuration")) {
-                if (OuterWorldsPluginConfig::save_plugin_config()) {
+                if (save_mod_config()) {
                     ImGui::OpenPopup("succesful_save_popup");
                 }
             }
@@ -613,6 +604,14 @@ void OuterWorldsMain::on_draw_imgui() {
             }
 
             ImGui::PopItemWidth();
+
+            if (m_flicker_fixer != nullptr) {
+                m_flicker_fixer->on_draw_imgui();
+            }
+            
+            if (m_vr_hud != nullptr) {
+                m_vr_hud->on_draw_imgui();
+            }
 
             ImGui::SeparatorText("Debugging");
             // game state section
@@ -626,10 +625,10 @@ void OuterWorldsMain::on_draw_imgui() {
                 ImGui::EndGroup();
 
                 if (m_vr_weapon != nullptr) {
-                    m_vr_weapon->draw_imgui();
+                    m_vr_weapon->on_draw_imgui();
                 }
 
-                ImGui::SeparatorText("Timers");
+                ImGui::SeparatorText("Timers [microseconds]");
                 ImGui::BeginGroup();
                 ImGui::BeginDisabled();
                 ImGui::PushItemWidth(50);
@@ -644,5 +643,48 @@ void OuterWorldsMain::on_draw_imgui() {
     }
     catch (...) {
         API::get()->log_error("[main][on_draw_imgui] Exception");
+    }
+}
+
+// -------------------------------------------------------------------------------------
+// mod config
+// -------------------------------------------------------------------------------------
+bool OuterWorldsMain::load_mod_config() {
+    try {
+        API::get()->log_warn("[main][load_mod_config] Loading...");
+        static const auto config_filename = API::get()->get_persistent_dir(L"outer_worlds_vr_config.ini").string();
+        mINI::INIFile mod_config_file(config_filename);
+        mINI::INIStructure mod_config;
+
+        if (!mod_config_file.read(mod_config)) {
+            API::get()->log_error("[main][load_mod_config] Missing config file. Creating config with default values");
+            return save_mod_config();
+        }
+
+        m_vr_hud->on_load_config(mod_config);
+        m_flicker_fixer->on_load_config(mod_config);
+        return true;
+    }
+    catch (...) {
+        API::get()->log_error("[plugin_config][load_mod_config] Exception");
+        return false;
+    }
+}
+
+bool OuterWorldsMain::save_mod_config() {
+    try {
+        API::get()->log_warn("[main][save_mod_config] Saving...");
+        static const auto config_filename = API::get()->get_persistent_dir(L"outer_worlds_vr_config.ini").string();
+        mINI::INIFile mod_config_file(config_filename);
+        mINI::INIStructure mod_config;
+
+        m_vr_hud->on_save_config(mod_config);
+        m_flicker_fixer->on_save_config(mod_config);
+
+        return mod_config_file.write(mod_config, true);
+    }
+    catch (...) {
+        API::get()->log_error("[main][save_mod_config] Exception");
+        return false;
     }
 }

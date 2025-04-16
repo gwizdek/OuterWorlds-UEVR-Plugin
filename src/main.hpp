@@ -4,6 +4,8 @@
 #include <unordered_set>
 #include <map>
 
+#include "mINI/ini.h"
+
 #include "indiana/SDK/Engine_classes.hpp"
 #include "indiana/SDK/UMG_classes.hpp"
 #include "indiana/SDK/Indiana_classes.hpp"
@@ -53,7 +55,7 @@ using namespace uevr;
 
 class OuterWorldsHUD;
 class OuterWorldsWeapon;
-class OuterWorldsNativeFix;
+class OuterWorldsFlickerFixer;
 
 class OuterWorldsMain
 {
@@ -63,7 +65,7 @@ private:
     VRControllers* m_vr_controllers{ nullptr };
     OuterWorldsWeapon* m_vr_weapon{ nullptr };
     OuterWorldsHUD* m_vr_hud{ nullptr };
-    OuterWorldsNativeFix* m_native_fix{ nullptr };
+    OuterWorldsFlickerFixer* m_flicker_fixer{ nullptr };
 
     bool m_ui_option_show_debug_view{ true };
     int m_ui_xinput_duration{ 0 };              // [microseconds]
@@ -103,10 +105,12 @@ public:
     OuterWorldsMain();
     virtual ~OuterWorldsMain();
 
-    void on_tick();
+    void on_tick(float delta);
     void on_xinput(XINPUT_STATE* state);
     void on_draw_imgui();
     bool is_valid();
+    bool load_mod_config();
+    bool save_mod_config();
     void cleanup_pointers();
     static void cleanup_actors();
 

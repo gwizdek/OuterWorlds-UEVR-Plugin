@@ -1,15 +1,14 @@
 #include "uevr/API.hpp"
+#include "imgui/imgui.h"
 
 #include "indiana/SDK/Niagara_classes.hpp"
 
 #include "weapon.hpp"
-#include "imgui/imgui.h"
 
 using namespace uevr;
 
-OuterWorldsWeapon::OuterWorldsWeapon(OuterWorldsMain* main, HandPreference hand_preference) {
+OuterWorldsWeapon::OuterWorldsWeapon(OuterWorldsMain* main) {
     m_main = main;
-    m_hand_preference = hand_preference;
 }
 
 bool OuterWorldsWeapon::is_valid() {
@@ -23,8 +22,9 @@ bool OuterWorldsWeapon::is_valid() {
     return false;
 }
 
-void OuterWorldsWeapon::initialize() {
+void OuterWorldsWeapon::initialize(HandPreference hand_preference) {
     try {
+        m_hand_preference = hand_preference;
         if (m_main->get_vr_controllers() != nullptr && m_main->get_vr_controllers()->is_valid()) {
             SDK::FTransform zero_transform{
                 .Rotation = { 0.f, 0.f, 0.f, 1.f },
@@ -70,7 +70,7 @@ void OuterWorldsWeapon::cleanup_pointers() {
     m_has_scope = false;
 }
 
-void OuterWorldsWeapon::tick() {
+void OuterWorldsWeapon::on_tick() {
     try {
         if (m_main != nullptr) {
 
@@ -197,7 +197,15 @@ void OuterWorldsWeapon::set_offset_component_relative_location() {
     // offset FPVCamera to match weapon barrel
     try {
         if (m_equipped_weapon != nullptr && m_equipped_weapon->SkeletalMeshComponent != nullptr) {
-            // get barrel transform
+            //if (m_weapon_type == WEAPON_TYPE_RANGED) {
+            //    SDK::FVector aiming_direction = static_cast<SDK::URangedMode*>(m_equipped_weapon->GetCurrentMode())->GetMuzzleLocation();
+
+            //    m_particle_pointer_offset_component->K2_SetRelativeLocation(
+            //        static_cast<SDK::URangedMode*>(m_equipped_weapon->GetCurrentMode())->GetMuzzleLocation(), false, &h_result, false
+            //    );
+            //}
+
+            // get muzzle transform
             auto offset_transform = m_equipped_weapon->SkeletalMeshComponent->GetSocketTransform(
                 SDK::UKismetStringLibrary::Conv_StringToName(L"MuzzleFlashSocket"), SDK::ERelativeTransformSpace::RTS_Component
             );
@@ -380,17 +388,51 @@ void OuterWorldsWeapon::update_particle_pointer() {
     }
 }
 
-void OuterWorldsWeapon::draw_imgui() {
-    ImGui::SeparatorText("Equipped Weapon");
-    // game state section
-    
-    ImGui::BeginGroup();
-    ImGui::BeginDisabled();
+void OuterWorldsWeapon::on_draw_imgui() {
+    try {
+        if (is_valid()) {
+            ImGui::SeparatorText("Equipped Weapon");
+            // game state section
 
-    ImGui::InputText("Name", (m_equipped_weapon != nullptr) ? (char*)m_equipped_weapon->GetName().c_str() : (char*)"Unknown", 20);
-    ImGui::InputText("Type", (char*)VRWeaponTypeName[m_weapon_type], 20);
-    ImGui::Checkbox("Has Scope", &m_has_scope);
+            ImGui::BeginGroup();
+            ImGui::BeginDisabled();
 
-    ImGui::EndDisabled();
-    ImGui::EndGroup();
+            ImGui::InputText("Name", (m_equipped_weapon != nullptr) ? (char*)m_equipped_weapon->GetName().c_str() : (char*)"Unknown", 20);
+            ImGui::InputText("Type", (char*)VRWeaponTypeName[m_weapon_type], 20);
+            ImGui::Checkbox("Has Scope", &m_has_scope);
+
+            //if (m_weapon_type == WEAPON_TYPE_RANGED) {
+            //    SDK::FVector aiming_direction = static_cast<SDK::URangedMode*>(m_equipped_weapon->GetCurrentMode())->GetAimingDirection();
+            //    float ad_vec3f[3] = { aiming_direction.X, aiming_direction.Y, aiming_direction.Z };
+            //    ImGui::InputFloat3("Aiming Direction", ad_vec3f);
+
+            //    SDK::FVector aiming_up_direction = static_cast<SDK::URangedMode*>(m_equipped_weapon->GetCurrentMode())->GetAimingUpDirection();
+            //    float aud_vec3f[3] = { aiming_up_direction.X, aiming_up_direction.Y, aiming_up_direction.Z };
+            //    ImGui::InputFloat3("Aiming Up Direction", aud_vec3f);
+
+            //    /*SDK::UKismetMathLibrary::*/
+
+            //    SDK::FVector muzzle_location{};
+            //    SDK::FRotator muzzle_rotation{};
+
+            //    static_cast<SDK::URangedMode*>(m_equipped_weapon->GetCurrentMode())->GetMuzzleLocationAndRotation(&muzzle_location, &muzzle_rotation);
+
+            //    //SDK::FVector muzzle_location = static_cast<SDK::URangedMode*>(m_equipped_weapon->GetCurrentMode())->GetMuzzleLocation();
+            //    float ml_vec3f[3] = { muzzle_location.X, muzzle_location.Y, muzzle_location.Z };
+            //    ImGui::InputFloat3("Muzzle Location", ml_vec3f);
+            //    float mr_vec3f[3] = { muzzle_rotation.Pitch, muzzle_rotation.Roll, muzzle_rotation.Yaw };
+            //    ImGui::InputFloat3("Muzzle Rotation", mr_vec3f);
+
+            //    auto vec_from_rot = SDK::UKismetMathLibrary::Conv_RotatorToVector(muzzle_rotation);
+            //    float vfr_vec3f[3] = { vec_from_rot.X, vec_from_rot.Y, vec_from_rot.Z };
+            //    ImGui::InputFloat3("Vector from rotator", vfr_vec3f);
+            //}
+
+            ImGui::EndDisabled();
+            ImGui::EndGroup();
+        }
+    }
+    catch (...) {
+        API::get()->log_error("[weapon][on_draw_imgui] Exception");
+    }
 }

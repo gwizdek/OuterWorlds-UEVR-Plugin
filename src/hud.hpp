@@ -15,11 +15,6 @@ class OuterWorldsHUD
 private:
     OuterWorldsMain* m_main{ nullptr };
 
-    SDK::FTransform m_ammo_readout_transform{};
-    SDK::FTransform m_character_overview_transform{};
-    SDK::FTransform m_item_degradation_transform{};
-    SDK::FTransform m_compass_transform{};
-
     // widget components
     AttachedWidget* m_ammo_readout{ nullptr };
     AttachedWidget* m_character_overview{ nullptr };
@@ -33,6 +28,9 @@ public:
     virtual ~OuterWorldsHUD() {};
 
     void initialize();
+    bool is_valid();
     void cleanup_pointers();
-    void draw_imgui();
+    void on_draw_imgui();
+    void on_load_config(mINI::INIStructure& config);
+    void on_save_config(mINI::INIStructure& config);
 };

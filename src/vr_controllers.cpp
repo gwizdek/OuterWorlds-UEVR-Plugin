@@ -187,7 +187,7 @@ void VRControllers::cleanup_actors() {
     try {
         auto world = SDK::UWorld::GetWorld();
         if (!SDK::UKismetSystemLibrary::IsValid(world)) {
-            API::get()->log_error("[vr_controllers][cleanup_actors] World not valid");
+            API::get()->log_error("[vr_controllers][cleanup_actors] World invalid");
             return;
         }
 

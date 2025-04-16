@@ -1,3 +1,4 @@
+#include "utility/Scan.hpp"
 #include "utility/Module.hpp"
 
 #include "plugin_utils.hpp"
@@ -111,5 +112,61 @@ void PluginUtils::load_asset(std::wstring asset_class_name, std::wstring resourc
     catch (...) {
         API::get()->log_error("[plugin_utils][load_asset] Exception");
         return;
+    }
+}
+
+
+//Find vtable real function and hook it
+int32_t PluginUtils::hook_vtable_fn(std::wstring_view class_name, std::wstring_view fn_name, void* destination, void** original) {
+    try {
+        auto obj = (API::UClass*)API::get()->find_uobject(class_name);
+
+        if (obj == nullptr) {
+            API::get()->log_warn("[plugin_utils][hook_vtable_fn] Failed to find %ls", class_name.data());
+            return -1;
+        }
+
+        auto fn = obj->find_function(fn_name);
+
+        if (fn == nullptr) {
+            API::get()->log_warn("[plugin_utils][hook_vtable_fn] Failed to find %ls", fn_name.data());
+            return -1;
+        }
+
+        auto native = fn->get_native_function();
+
+        if (native == nullptr) {
+            API::get()->log_warn("[plugin_utils][hook_vtable_fn] Failed to get native function");
+            return -1;
+        }
+
+        API::get()->log_warn("[plugin_utils][hook_vtable_fn] %ls native: 0x%p", fn_name.data(), native);
+
+        auto default_object = obj->get_class_default_object();
+
+        if (default_object == nullptr) {
+            API::get()->log_warn("[plugin_utils][hook_vtable_fn] Failed to get default object");
+            return -1;
+        }
+
+        auto insn = utility::scan_disasm((uintptr_t)native, 0x1000, "FF 90 ? ? ? ?");
+
+        if (!insn) {
+            API::get()->log_warn("[plugin_utils][hook_vtable_fn] Failed to find the instruction");
+            return -1;
+        }
+
+        auto offset = *(int32_t*)(*insn + 2);
+
+        auto vtable = *(uintptr_t**)default_object;
+        auto real_fn = vtable[offset / sizeof(void*)];
+
+        API::get()->log_warn("[plugin_utils][hook_vtable_fn] Real %ls: 0x%p (index: %d, offset 0x%X)", fn_name.data(), real_fn, offset / sizeof(void*), offset);
+
+        return API::get()->param()->functions->register_inline_hook((void*)real_fn, (void*)destination, original);
+    }
+    catch (...) {
+        API::get()->log_error("[plugin_utils][hook_vtable_fn] Exception");
+        return -1;
     }
 }
