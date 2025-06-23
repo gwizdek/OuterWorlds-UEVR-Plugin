@@ -11,6 +11,7 @@ public:
     bool m_cfg_option_attach_character_overview{ true };
     bool m_cfg_option_attach_compass{ true };
     bool m_cfg_option_attach_item_degradation{ true };
+    bool m_cfg_option_attach_particle_pointer{ true };
 
     void load_plugin_config();
     bool save_plugin_config();
