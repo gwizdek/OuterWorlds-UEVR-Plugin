@@ -69,7 +69,7 @@ void OuterWorldsPluginConfig::load_plugin_config() {
             }
         }
 
-        // compass
+        // item_degradation
         if (mod_config["attachments"].has("item_degradation")) {
             try {
                 std::string& item_degradation = mod_config["attachments"]["item_degradation"];
@@ -77,6 +77,17 @@ void OuterWorldsPluginConfig::load_plugin_config() {
             }
             catch (...) {
                 API::get()->log_error("[Plugin Config] Invalid Value: [attachments][item_degradation]");
+            }
+        }
+
+        // particle_pointer
+        if (mod_config["attachments"].has("particle_pointer")) {
+            try {
+                std::string& particle_pointer = mod_config["attachments"]["particle_pointer"];
+                m_cfg_option_attach_particle_pointer = std::stoi(particle_pointer) != 0;
+            }
+            catch (...) {
+                API::get()->log_error("[Plugin Config] Invalid Value: [attachments][particle_pointer]");
             }
         }
     }
@@ -97,6 +108,7 @@ bool OuterWorldsPluginConfig::save_plugin_config() {
     mod_config["attachments"]["character_overview"] = std::to_string(m_cfg_option_attach_character_overview).c_str();
     mod_config["attachments"]["compass"] = std::to_string(m_cfg_option_attach_compass).c_str();
     mod_config["attachments"]["item_degradation"] = std::to_string(m_cfg_option_attach_item_degradation).c_str();
+    mod_config["attachments"]["particle_pointer"] = std::to_string(m_cfg_option_attach_particle_pointer).c_str();
 
     return mod_config_file.generate(mod_config, true);
 }
