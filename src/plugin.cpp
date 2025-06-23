@@ -122,8 +122,11 @@ void OuterWorldsPlugin::on_pre_engine_tick(API::UGameEngine* engine, float delta
 
     try {
         if (m_vr_hud != nullptr) {
-            m_vr_hud->handle_mod_events(&m_mod_events);
-            m_vr_hud->process_vr_hud();
+            m_vr_hud->handle_mod_events(&m_mod_events, m_config->m_cfg_option_attach_particle_pointer);
+
+            if (m_config->m_cfg_option_attach_particle_pointer) {
+                m_vr_hud->process_vr_hud();
+            }
         }
     }
     catch (...) {
