@@ -59,8 +59,8 @@ bool AttachedWidget::attach(SDK::AActor* hand_actor, SDK::UUserWidget* widget, S
 
         m_widget_transform = transform;
 
-        m_widget_component = static_cast<SDK::UWidgetComponent*>(
-            hand_actor->AddComponentByClass(SDK::UWidgetComponent::StaticClass(), false, m_widget_transform, false)
+        m_widget_component = static_cast<SDK::UIndianaWidgetComponent*>(
+            hand_actor->AddComponentByClass(SDK::UIndianaWidgetComponent::StaticClass(), false, m_widget_transform, false)
             );
 
         if (m_widget_component == nullptr) {

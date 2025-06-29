@@ -1,11 +1,12 @@
 #pragma once
 #include "uevr/API.hpp"
+#include "indiana/SDK/Indiana_classes.hpp"
 #include "indiana/SDK/UMG_classes.hpp"
 #include "mINI/ini.h"
 
 class AttachedWidget
 {
-    SDK::UWidgetComponent* m_widget_component{ nullptr };
+    SDK::UIndianaWidgetComponent* m_widget_component{ nullptr };
 
     SDK::FTransform m_widget_transform{
         .Rotation = { SDK::UKismetMathLibrary::Quat_MakeFromEuler({ 0.f, 0.f, 270.0f }) },
