@@ -283,6 +283,7 @@ void OuterWorldsMain::handle_game_state() {
                     PluginUtils::reset_height(0.f);
                     vr->recenter_view();
                     m_vr_weapon->set_particle_pointer_visibility(true);
+                    set_ability_overview_visibility(false);
                     break;
 
                 case GAME_STATE_CONVERSATION:
@@ -401,12 +402,17 @@ void OuterWorldsMain::handle_crouch() {
 }
 
 void OuterWorldsMain::handle_weapon() {
-    // equipped weapon
-    if (SDK::UKismetSystemLibrary::IsValid(m_player_character)) {
-        auto equipment = static_cast<SDK::AIndianaPlayerCharacter_BP_C*>(m_player_character)->Equipment;
-        if (equipment != nullptr) {
-            m_vr_weapon->set_equipped_weapon(equipment->GetEquippedWeapon());
+    try {
+        // equipped weapon
+        if (SDK::UKismetSystemLibrary::IsValid(m_player_character)) {
+            auto equipment = static_cast<SDK::AIndianaPlayerCharacter_BP_C*>(m_player_character)->Equipment;
+            if (equipment != nullptr) {
+                m_vr_weapon->set_equipped_weapon(equipment->GetEquippedWeapon());
+            }
         }
+    }
+    catch (...) {
+        API::get()->log_error("[main][handle_weapon] Exception");
     }
 }
 
