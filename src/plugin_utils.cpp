@@ -1,5 +1,6 @@
 #include "utility/Scan.hpp"
 #include "utility/Module.hpp"
+#include "indiana/SDK/AssetRegistry_classes.hpp"
 
 #include "plugin_utils.hpp"
 
@@ -107,11 +108,35 @@ void PluginUtils::load_asset(std::wstring asset_class_name, std::wstring resourc
             API::get()->log_warn("[plugin_utils][load_asset] Failed to load Asset");
             return;
         }
+
+        // getting and printing FAssetData
+        SDK::FAssetData asset_data = SDK::UAssetRegistryHelpers::CreateAssetData(asset, true);
+        API::get()->log_warn("[plugin_utils][load_asset][FAssetData.ObjectPath: '%s'", asset_data.ObjectPath.GetRawString().c_str());
+        API::get()->log_warn("[plugin_utils][load_asset][FAssetData.AssetClass: '%s'", asset_data.AssetClass.GetRawString().c_str());
+        API::get()->log_warn("[plugin_utils][load_asset][FAssetData.AssetName: '%s'", asset_data.AssetName.GetRawString().c_str());
+        API::get()->log_warn("[plugin_utils][load_asset][FAssetData.PackageName: '%s'", asset_data.PackageName.GetRawString().c_str());
+        API::get()->log_warn("[plugin_utils][load_asset][FAssetData.PackagePath: '%s'", asset_data.PackagePath.GetRawString().c_str());
+
         API::get()->log_warn("[plugin_utils][load_asset] Successfully Loaded Asset");
     }
     catch (...) {
         API::get()->log_error("[plugin_utils][load_asset] Exception");
         return;
+    }
+}
+
+SDK::UObject* PluginUtils::load_asset(SDK::FAssetData asset_data) {
+    try {
+        API::get()->log_warn("[plugin_utils][load_asset] Loading Asset %s", asset_data.ObjectPath.GetRawString().c_str());
+        SDK::FSoftObjectPath path = SDK::UAssetRegistryHelpers::ToSoftObjectPath(asset_data);
+        auto obj_ref = SDK::UKismetSystemLibrary::Conv_SoftObjPathToSoftObjRef(path);
+        SDK::UObject* asset = SDK::UKismetSystemLibrary::LoadAsset_Blocking(obj_ref);
+        API::get()->log_warn("[plugin_utils][load_asset] Successfully Loaded Asset");
+        return asset;
+    }
+    catch (...) {
+        API::get()->log_error("[plugin_utils][load_asset] Exception");
+        return nullptr;
     }
 }
 

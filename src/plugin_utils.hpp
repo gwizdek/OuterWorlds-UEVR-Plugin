@@ -18,5 +18,6 @@ public:
     static SDK::AActor* spawn_actor(SDK::UWorld* world, SDK::FTransform transform, std::wstring actor_tag);
     static void destroy_actors_by_tag(SDK::UWorld* world, std::wstring actor_tag);
     static void load_asset(std::wstring asset_class_name, std::wstring resource_name);
+    static SDK::UObject* load_asset(SDK::FAssetData asset_data);
     static int32_t hook_vtable_fn(std::wstring_view class_name, std::wstring_view fn_name, void* destination, void** original);
 };

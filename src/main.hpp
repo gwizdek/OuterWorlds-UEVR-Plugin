@@ -15,8 +15,6 @@
 #include "memo_structs.hpp"
 #include "vr_controllers.hpp"
 
-#define STATIC_LOAD_ASSET_OFFSET 0x1C67740
-
 typedef enum HandPreference {
     RIGHT_HANDED,
     LEFT_HANDED
@@ -67,7 +65,7 @@ private:
     OuterWorldsHUD* m_vr_hud{ nullptr };
     OuterWorldsFlickerFixer* m_flicker_fixer{ nullptr };
 
-    bool m_ui_option_show_debug_view{ true };
+    bool m_ui_option_show_debug_view{ false };
     int m_ui_xinput_duration{ 0 };              // [microseconds]
     int m_ui_pre_engine_tick_duration{ 0 };     // [microseconds]
 

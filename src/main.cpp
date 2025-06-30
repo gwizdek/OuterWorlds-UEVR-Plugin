@@ -347,10 +347,21 @@ void OuterWorldsMain::handle_level_change() {
             if (m_game_state.value != GAME_STATE_MAIN_MENU) {
                 API::get()->log_warn("[main][handle_level_change] Initialize components");
                 // reinitialize
-                PluginUtils::load_asset(
-                    L"Class /Script/Engine.ParticleSystem",
-                    L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball.PS_Plasma_Ball"
-                );
+                //PluginUtils::load_asset(
+                //    L"Class /Script/Engine.ParticleSystem",
+                //    L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball.PS_Plasma_Ball"
+                //);
+
+                SDK::FAssetData asset_data{
+                    .ObjectPath = SDK::UKismetStringLibrary::Conv_StringToName(L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball.PS_Plasma_Ball"),
+                    .PackageName = SDK::UKismetStringLibrary::Conv_StringToName(L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball"),
+                    .PackagePath = SDK::UKismetStringLibrary::Conv_StringToName(L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma"),
+                    .AssetName = SDK::UKismetStringLibrary::Conv_StringToName(L"PS_Plasma_Ball"),
+                    .AssetClass = SDK::UKismetStringLibrary::Conv_StringToName(L"ParticleSystem"),
+                };
+                // keep the pointer until vr weapon init is done
+                auto asset = PluginUtils::load_asset(asset_data);
+
                 m_vr_controllers->initialize();
                 m_vr_weapon->initialize(RIGHT_HANDED);
                 m_vr_hud->initialize();
@@ -362,12 +373,6 @@ void OuterWorldsMain::handle_level_change() {
                 fix_player_highlighter();
                 fix_cinematic_camera();
                 set_ability_overview_visibility(false);
-
-                //if (m_pawn.value != nullptr && !m_pawn.value->IsA(SDK::ADefaultPawn::StaticClass())) {
-                //    if (m_config->m_cfg_option_auto_pause_daytime) {
-                //        pause_daytime(true);
-                //    }
-                //}
             }
             else {
                 API::get()->log_warn("[main][handle_level_change] Components cleanup");
