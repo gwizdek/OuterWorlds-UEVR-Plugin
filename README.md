@@ -83,11 +83,6 @@ Unpack it into `..\TOWSpacersChoice\Indiana\Binaries\Win64\` folder.
 
    ![image](https://github.com/user-attachments/assets/d09ce57b-8b5e-4913-8b58-dc6693749ad9)  
 
-    Inside `Clarity and Detail` section set:  
-    * NVSharpen Mode: `On`
-    * NVSharpen Value: `1.00`
-
-   ![image](https://github.com/user-attachments/assets/c56796fe-dbba-4d7a-b69d-93df5d2870b9)  
     **IMPORTANT:** Press `Apply Changes` button in top right corrner of the application  
 
 
@@ -96,7 +91,10 @@ Onscreen indicator will show a text message on your monitor screen when DLSS is 
 There are two `.reg` files located inside downloaded NVIDIA Profile Inspector Revamped `.zip` file: `Enable DLSS UI.reg` and `Disable DLSS UI.reg`. Use the first one to enable the indicator. 
 
 6) Enable DLSS in the game  
-Start the game. Go to Settings and select upscaling level (recommended: Performance) in `FidelityFX Super Resolution 2 (FSR 2)` option. Press `Apply`.  
+Start the game. Go to Settings and select upscaling level (recommended: Performance) in `FidelityFX Super Resolution 2 (FSR 2)` option. 
+Then, select `Screen Effects: Medium` or above.  
+Press `Apply`.  
+
 The game still thinks that is using FSR2, but at this point it should be using DLSS.  
 If everything is set up correctly and the Onscreen Indicator is turned on, you should be able to see a text message on your monitor (bottom/left corner).  
 ![image](https://github.com/user-attachments/assets/45971cdc-d1ff-4681-99c2-0fa95c7367b8)  
