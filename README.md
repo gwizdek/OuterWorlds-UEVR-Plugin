@@ -127,6 +127,18 @@ Curently, there are two major features missing:
 * Melee weapon handling
 * Scoped weapon handling
 
+## Troubleshooting
+### 1. Game crashes right after injecting UEVR
+Open `config.txt` file located in game's UEVR profile folder and edit these values:
+```
+OpenXR_ResolutionScale=1.000000
+VR_NativeStereoFix=true
+```
+Save and try injecting UEVR again.
+
+### 2. Game crashes when taking elevator to Back Bays (on the Groundbreaker)
+This is a known issue with version 0.1.0. For the time being, use the elevator in 2D, then inject UEVR.
+
 
 ## Credits
 praydog for UEVR
