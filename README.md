@@ -100,27 +100,12 @@ If everything is set up correctly and the Onscreen Indicator is turned on, you s
 ![image](https://github.com/user-attachments/assets/45971cdc-d1ff-4681-99c2-0fa95c7367b8)  
 
 
-## Eye flicker fix
-The latest changes made by praydog to UEVR brought better image quality in Native Stereo Rendering Method. This feature is enabled by using `Native Stereo Fix -> Enabled` checkbox. The feature is not perfect yet and in some games it causes side effects.  
-In regards to Outer Worlds that side effect is image flickering seen in one of the eyes. This is related to the game engine recalculating lighting conditions for given time of day.  
-
-The issue can be mitigated in two ways:  
-* Disable and enable Native Stereo Fix or set rendering method to Synchronized Sequential and back to Native Stereo
-* Stop the game from reevaluating lighting conditions  
-
-The first option works only for a short period of time and then you need to do it again  
-The second option effectively stops progress of day time
-
-The profile provides both mitigation methods:  
-* If you're not using `Pause Daytime` feature and the screen starts to flicker, press and hold `Left Thumbstick Button` for >3s to remove eye flicker
-* If you want to test `Pause Daytime` go to the plugin overlay window (an extra window visible next to UEVR overlay window) and press `Pause Daytime` button.
-This will pause daytime until you change game location or reload the game (you can wait up to the moment when the lighting conditions suit you and pause daytime then).  
-If you like the feature, you can also use use `Auto Pause Daytime on Level Load` option available in plugin overlay.  
-Pressing `Save Configuration` button will save the options to hard drive.  
-![image](https://github.com/user-attachments/assets/655da1d9-7049-4b55-8da7-981fddb335a2)  
-
-
-If you want to disable the `Pause Daytime` feature. Uncheck `Auto Pause Daytime on Level Load` and reload the game.
+## CVars
+Here are some CVars you may want to experiment with. These can help with object shadows glitches and uneven lighting. Adding these to `user_script.txt` will cost some performance.
+```
+r.DistanceFieldShadowing 0
+r.AOGlobalDistanceFieldPartialUpdates 0
+```
 
 ## Missing Features  
 Curently, there are two major features missing:
@@ -137,7 +122,7 @@ VR_NativeStereoFix=true
 Save and try injecting UEVR again.
 
 ### 2. Game crashes when taking elevator to Back Bays (on the Groundbreaker)
-This is a known issue with version 0.1.0. For the time being, use the elevator in 2D, then inject UEVR.
+This is a known issue with version 0.1.0 (fixed in 0.2.0).
 
 
 ## Credits
