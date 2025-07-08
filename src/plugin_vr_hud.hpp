@@ -104,7 +104,7 @@ public:
         m_hud = hud;
     }
 
-    bool initialize_hud() {
+    bool initialize_hud(bool attach_particle_pointer) {
         if (m_player_character == nullptr || m_hud == nullptr || m_hud_state != VR_HUD_PENDING_INIT) {
             return false;
         }
@@ -133,7 +133,7 @@ public:
             !attach_character_overview() ||
             !attach_item_degradation() ||
             !attach_compass() ||
-            !spawn_particle_pointer()
+            (attach_particle_pointer && !spawn_particle_pointer())
             ) {
             //destroy_actors();
             m_hud_state = VR_HUD_ERROR;
@@ -150,7 +150,7 @@ public:
         return true;
     }
 
-    void handle_mod_events(std::unordered_set<ModEvent>* mod_events) {
+    void handle_mod_events(std::unordered_set<ModEvent>* mod_events, bool attach_particle_pointer) {
         if (mod_events == nullptr) {
             return;
         }
@@ -158,7 +158,7 @@ public:
         if (mod_events->contains(MOD_EVENT_VR_HUD_INITIALIZE)) {
             m_hud_state = OuterWorldsVRHUDState::VR_HUD_PENDING_INIT;
 
-            if (initialize_hud()) {
+            if (initialize_hud(attach_particle_pointer)) {
                 mod_events->extract(MOD_EVENT_VR_HUD_INITIALIZE);
             };
         }
