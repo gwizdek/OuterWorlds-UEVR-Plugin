@@ -15,7 +15,7 @@ private:
     int m_toggle_native_fix_counter{ -1 };
     
     float m_max_idle_duration{ 10.f }; // [s]
-    float m_max_active_duration{ 0.1f }; // [s]
+    float m_max_active_duration{ 0.15f }; // [s]
     float m_current_duration{ 6.f };
     bool m_capture_active{ false };
 

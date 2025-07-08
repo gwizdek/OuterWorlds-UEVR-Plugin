@@ -24,16 +24,16 @@ void OuterWorldsPlugin::on_initialize() {
 void OuterWorldsPlugin::on_xinput_get_state(uint32_t* retval, uint32_t user_index, XINPUT_STATE* state) {
     PLUGIN_LOG_ONCE("XInput Get State");
 
+    const UEVR_VRData* vr = API::get()->param()->vr;
+    if (!vr->is_runtime_ready())
+        return;
+
     if (m_main != nullptr) {
         // start cb timer
         std::chrono::steady_clock::time_point begin_time;
         if (m_main->get_ui_option_show_debug_view() && m_cb_calls_count == 0) {
             begin_time = std::chrono::steady_clock::now();
         }
-
-        const UEVR_VRData* vr = API::get()->param()->vr;
-        if (!vr->is_runtime_ready())
-            return;
 
         m_main->prepare_pointers();
         m_main->prepare_state();
@@ -52,7 +52,21 @@ void OuterWorldsPlugin::on_xinput_get_state(uint32_t* retval, uint32_t user_inde
 }
 
 void OuterWorldsPlugin::on_pre_engine_tick(API::UGameEngine* engine, float delta) {
+    static bool one_time_step{ false };
+
     PLUGIN_LOG_ONCE("Pre Engine Tick: %f", delta);
+
+    const UEVR_VRData* vr = API::get()->param()->vr;
+    if (!vr->is_runtime_ready())
+        return;
+
+    if (!one_time_step) {
+        one_time_step = true;
+        // this makes sure we change NativeStereoFix to true as soon as we can, because when it's set to false
+        // and we are using DLSS bridge mod, the game crashes on injection
+        vr->set_mod_value("VR_NativeStereoFix", "true");
+        API::get()->log_warn("[plugin][on_pre_engine_tick] One time init VR_NativeStereoFix set to true");
+    }
 
     if (m_main != nullptr) {
         m_cb_calls_count = m_cb_calls_count < CB_DURATION_SAMPLE_RATE ? ++m_cb_calls_count : 0;
@@ -62,15 +76,10 @@ void OuterWorldsPlugin::on_pre_engine_tick(API::UGameEngine* engine, float delta
             begin_time = std::chrono::steady_clock::now();
         }
 
-        const UEVR_VRData* vr = API::get()->param()->vr;
-
         // if the controllers are not active, the xinput cb is not triggered.
         // normally we want the xinput cb to prepare vars as it's the first cb to be called
         // but if it wasn't called, we prepare them here
         if (!m_xinput_cb_processed) {
-            if (!vr->is_runtime_ready())
-                return;
-
             m_main->prepare_pointers();
             m_main->prepare_state();
             m_main->prepare_game_state();

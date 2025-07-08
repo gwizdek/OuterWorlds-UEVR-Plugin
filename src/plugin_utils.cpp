@@ -57,7 +57,7 @@ SDK::AActor* PluginUtils::spawn_actor(SDK::UWorld* world, SDK::FTransform transf
 // this function tries to find and destroy actors we created for attachments, even when we no longer have pointers to them
 void PluginUtils::destroy_actors_by_tag(SDK::UWorld* world, std::wstring actor_tag) {
     try {
-        API::get()->log_warn("[plugin_utils][destroy_actors_by_tag] Cleaning up stale Actors");
+        API::get()->log_warn("[plugin_utils][destroy_actors_by_tag] Cleaning up stale %ls Actors", actor_tag.c_str());
 
         if (world == nullptr || !SDK::UKismetSystemLibrary::IsValid(world)) {
             API::get()->log_warn("[plugin_utils][destroy_actors_by_tag] Invalid World object");

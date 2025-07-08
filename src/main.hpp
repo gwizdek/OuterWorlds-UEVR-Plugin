@@ -58,7 +58,7 @@ class OuterWorldsFlickerFixer;
 class OuterWorldsMain
 {
 private:
-    const char* MOD_VERSION = "0.2.0";
+    const char* MOD_VERSION = "6DOF Guns v0.2.0";
 
     VRControllers* m_vr_controllers{ nullptr };
     OuterWorldsWeapon* m_vr_weapon{ nullptr };
@@ -106,7 +106,6 @@ public:
     void on_tick(float delta);
     void on_xinput(XINPUT_STATE* state);
     void on_draw_imgui();
-    bool is_valid();
     bool load_mod_config();
     bool save_mod_config();
     void cleanup_pointers();

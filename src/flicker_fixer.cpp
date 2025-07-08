@@ -71,22 +71,22 @@ void OuterWorldsFlickerFixer::on_tick(float delta) {
             //API::get()->log_warn("[flicker_fixer][on_tick] Deactivate");
         }
 
-        const UEVR_VRData* vr = API::get()->param()->vr;
+        //const UEVR_VRData* vr = API::get()->param()->vr;
 
-        if (m_toggle_native_fix_counter > 0) {
-            m_toggle_native_fix_counter--;
-        }
+        //if (m_toggle_native_fix_counter > 0) {
+        //    m_toggle_native_fix_counter--;
+        //}
 
-        if (m_toggle_native_fix_counter == 9) {
-            vr->set_mod_value("VR_NativeStereoFix", "false");
-            API::get()->log_warn("[flicker_fixer][on_tick] OFF");
-        }
+        //if (m_toggle_native_fix_counter == 9) {
+        //    vr->set_mod_value("VR_NativeStereoFix", "false");
+        //    API::get()->log_warn("[flicker_fixer][on_tick] OFF");
+        //}
 
-        if (m_toggle_native_fix_counter == 0) {
-            vr->set_mod_value("VR_NativeStereoFix", "true");
-            API::get()->log_warn("[flicker_fixer][on_tick] ON");
-            m_toggle_native_fix_counter = -1;
-        }
+        //if (m_toggle_native_fix_counter == 0) {
+        //    vr->set_mod_value("VR_NativeStereoFix", "true");
+        //    API::get()->log_warn("[flicker_fixer][on_tick] ON");
+        //    m_toggle_native_fix_counter = -1;
+        //}
     }
     catch (...) {
         API::get()->log_error("[flicker_fixer][on_tick] Exception");
@@ -208,6 +208,7 @@ void OuterWorldsFlickerFixer::spawn_flicker_fixer() {
 }
 
 void OuterWorldsFlickerFixer::cleanup_pointers() {
+    API::get()->log_warn("[flicker_fixer][cleanup_pointers] Cleanup");
     m_flicker_fixer_actor = nullptr;
     m_scene_capture_component = nullptr;
     m_render_target = nullptr;

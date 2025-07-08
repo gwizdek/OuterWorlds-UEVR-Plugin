@@ -28,10 +28,10 @@ OuterWorldsMain::OuterWorldsMain() {
 
 OuterWorldsMain::~OuterWorldsMain() {
     API::get()->log_warn("[main] Destructor");
-    m_vr_hud->~OuterWorldsHUD();
-    m_vr_weapon->~OuterWorldsWeapon();
-    m_vr_controllers->~VRControllers();
-    m_flicker_fixer->~OuterWorldsFlickerFixer();
+    //m_vr_hud->~OuterWorldsHUD();
+    //m_vr_weapon->~OuterWorldsWeapon();
+    //m_vr_controllers->~VRControllers();
+    //m_flicker_fixer->~OuterWorldsFlickerFixer();
 }
 
 void OuterWorldsMain::on_xinput(XINPUT_STATE* state) {
@@ -39,8 +39,8 @@ void OuterWorldsMain::on_xinput(XINPUT_STATE* state) {
 }
 
 void OuterWorldsMain::on_tick(float delta) {
-    handle_game_state();
     handle_level_change();
+    handle_game_state();
     handle_mod_events();
     fix_ledger();
     fix_workbench();
@@ -59,22 +59,26 @@ void OuterWorldsMain::on_tick(float delta) {
     m_gamepad_left_thumb.add_delta(delta);
 }
 
-bool OuterWorldsMain::is_valid() {
+void OuterWorldsMain::cleanup_pointers() {
     try {
-        return m_vr_controllers->is_valid() && m_vr_weapon->is_valid();
+        API::get()->log_warn("[main][cleanup] Starting Pointers Cleanup");
+
+        if (m_vr_weapon != nullptr) {
+            m_vr_weapon->cleanup_pointers();
+        }
+        if (m_vr_hud != nullptr) {
+            m_vr_hud->cleanup_pointers();
+        }
+        if (m_vr_controllers != nullptr) {
+            m_vr_controllers->cleanup_pointers();
+        }
+        if (m_flicker_fixer != nullptr) {
+            m_flicker_fixer->cleanup_pointers();
+        }
     }
     catch (...) {
-        API::get()->log_error("[main][is_valid] Exception");
-        return false;
+        API::get()->log_error("[main][cleanup_pointers] Exception");
     }
-}
-
-void OuterWorldsMain::cleanup_pointers() {
-    API::get()->log_warn("[main][cleanup] Starting Pointers Cleanup");
-    m_vr_controllers->cleanup_pointers();
-    m_vr_weapon->cleanup_pointers();
-    m_flicker_fixer->cleanup_pointers();
-    //m_vr_hud->cleanup_pointers();
 }
 
 void OuterWorldsMain::cleanup_actors() {
@@ -99,9 +103,12 @@ void OuterWorldsMain::prepare_pointers() {
         if (m_player_controller != nullptr) {
             // UI
             m_ui = SDK::UIndianaUIFunctionLibrary::GetIndianaUI(&m_reusable_branches, m_player_controller);
-            if (m_ui != nullptr) {
+            if (m_reusable_branches == SDK::ECheckBranches::Valid && m_ui != nullptr) {
                 // HUD
                 m_hud = m_ui->GetHUD();
+            }
+            else {
+                m_hud = nullptr;
             }
         }
         else {
@@ -214,16 +221,16 @@ void OuterWorldsMain::handle_controller_input(XINPUT_STATE* state) {
     //m_gamepad_right_shoulder.set_state(state);
     //m_gamepad_left_shoulder.set_state(state);
     //m_gamepad_right_thumb.set_state(state);
-    m_gamepad_left_thumb.set_state(state);
+    //m_gamepad_left_thumb.set_state(state);
     //m_gamepad_trigger_right.set_state(state);
     //m_gamepad_trigger_left.set_state(state);
 
 
-    if (m_gamepad_left_thumb.is_long_pressed(2.f)) {
-        if (m_flicker_fixer->is_valid()) {
-            m_flicker_fixer->cycle(50);
-        }
-    }
+    //if (m_gamepad_left_thumb.is_long_pressed(2.f)) {
+    //    if (m_flicker_fixer->is_valid()) {
+    //        m_flicker_fixer->cycle(50);
+    //    }
+    //}
 }
 
 // -------------------------------------------------------------------------------------
@@ -346,21 +353,6 @@ void OuterWorldsMain::handle_level_change() {
 
             if (m_game_state.value != GAME_STATE_MAIN_MENU) {
                 API::get()->log_warn("[main][handle_level_change] Initialize components");
-                // reinitialize
-                //PluginUtils::load_asset(
-                //    L"Class /Script/Engine.ParticleSystem",
-                //    L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball.PS_Plasma_Ball"
-                //);
-
-                SDK::FAssetData asset_data{
-                    .ObjectPath = SDK::UKismetStringLibrary::Conv_StringToName(L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball.PS_Plasma_Ball"),
-                    .PackageName = SDK::UKismetStringLibrary::Conv_StringToName(L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball"),
-                    .PackagePath = SDK::UKismetStringLibrary::Conv_StringToName(L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma"),
-                    .AssetName = SDK::UKismetStringLibrary::Conv_StringToName(L"PS_Plasma_Ball"),
-                    .AssetClass = SDK::UKismetStringLibrary::Conv_StringToName(L"ParticleSystem"),
-                };
-                // keep the pointer until vr weapon init is done
-                auto asset = PluginUtils::load_asset(asset_data);
 
                 m_vr_controllers->initialize();
                 m_vr_weapon->initialize(RIGHT_HANDED);
@@ -532,9 +524,14 @@ void OuterWorldsMain::fix_workbench() {
 }
 
 void OuterWorldsMain::set_ability_overview_visibility(bool visible) {
-    if (m_hud != nullptr) {
-        m_hud->AbilityOverviewGamepad->SetVisibility(visible ? SDK::ESlateVisibility::Visible : SDK::ESlateVisibility::Hidden);
-        m_hud->AbilityOverview->SetVisibility(visible ? SDK::ESlateVisibility::Visible : SDK::ESlateVisibility::Hidden);
+    try {
+        if (m_hud != nullptr) {
+            m_hud->AbilityOverviewGamepad->SetVisibility(visible ? SDK::ESlateVisibility::Visible : SDK::ESlateVisibility::Hidden);
+            m_hud->AbilityOverview->SetVisibility(visible ? SDK::ESlateVisibility::Visible : SDK::ESlateVisibility::Hidden);
+        }
+    }
+    catch (...) {
+        API::get()->log_error("[main][set_ability_overview_visibility] Exception");
     }
 }
 

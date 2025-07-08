@@ -4,6 +4,7 @@
 #include "indiana/SDK/Niagara_classes.hpp"
 
 #include "weapon.hpp"
+#include "plugin_utils.hpp"
 
 using namespace uevr;
 
@@ -13,7 +14,7 @@ OuterWorldsWeapon::OuterWorldsWeapon(OuterWorldsMain* main) {
 
 bool OuterWorldsWeapon::is_valid() {
     if (
-        m_equipped_weapon != nullptr &&
+        //m_equipped_weapon != nullptr &&
         m_particle_pointer_component != nullptr &&
         m_particle_pointer_offset_component != nullptr
         ) {
@@ -179,13 +180,14 @@ void OuterWorldsWeapon::set_weapon_type() {
                 m_weapon_type = WEAPON_TYPE_UNARMED;
                 m_has_scope = false;
             }
+
+            API::get()->log_warn("[weapon][set_weapon_type] Weapon Type: %s", VRWeaponTypeName[m_weapon_type]);
         }
         else {
             m_weapon_type = WEAPON_TYPE_UNKNOWN;
             m_has_scope = false;
         }
 
-        API::get()->log_warn("[weapon][set_weapon_type] Weapon Type: %s", VRWeaponTypeName[m_weapon_type]);
     }
     catch (...) {
         API::get()->log_error("[weapon][set_weapon_type] Exception");
@@ -221,8 +223,13 @@ void OuterWorldsWeapon::set_offset_component_relative_location() {
 }
 
 void OuterWorldsWeapon::set_particle_pointer_visibility(bool visible) {
-    if (m_particle_pointer_component != nullptr) {
-        m_particle_pointer_component->SetVisibility(visible, false);
+    try {
+        if (m_particle_pointer_component != nullptr) {
+            m_particle_pointer_component->SetVisibility(visible, false);
+        }
+    }
+    catch (...) {
+        API::get()->log_error("[weapon][set_particle_pointer_visibility] Exception");
     }
 }
 
@@ -247,31 +254,15 @@ void OuterWorldsWeapon::spawn_particle_pointer() {
     try {
         API::get()->log_warn("[weapon][spawn_particle_pointer] Spawning Particle Pointer - Begin");
 
-        //if (m_particle_pointer_component != nullptr) {
-        //    API::get()->log_warn("[weapon][spawn_particle_pointer] ParticleSystemComponent already attached");
-        //    return;
-        //}
+        SDK::FAssetData asset_data{
+            .ObjectPath = SDK::UKismetStringLibrary::Conv_StringToName(L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball.PS_Plasma_Ball"),
+            .PackageName = SDK::UKismetStringLibrary::Conv_StringToName(L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma/PS_Plasma_Ball"),
+            .PackagePath = SDK::UKismetStringLibrary::Conv_StringToName(L"/Game/Art/VFX/ParticleSystems/Weapons/Projectiles/Plasma"),
+            .AssetName = SDK::UKismetStringLibrary::Conv_StringToName(L"PS_Plasma_Ball"),
+            .AssetClass = SDK::UKismetStringLibrary::Conv_StringToName(L"ParticleSystem"),
+        };
 
-        SDK::UParticleSystem* ps{ nullptr };
-
-        auto asset_class = API::get()->find_uobject<API::UClass>(L"Class /Script/Engine.ParticleSystem");
-        if (asset_class == nullptr) {
-            API::get()->log_error("[weapon][spawn_particle_pointer] Failed to find ParticleSystem class");
-            return;
-        }
-
-        std::vector<API::UObject*> matching_objects = asset_class->get_objects_matching<API::UObject>();
-
-        for (size_t i = 0; i < matching_objects.size(); i++) {
-            auto obj = (SDK::UObject*)matching_objects[i];
-
-            if (obj->IsA(SDK::UParticleSystem::StaticClass())) {
-                if (obj->GetFullName().ends_with("PS_Plasma_Ball.PS_Plasma_Ball")) {
-                    API::get()->log_warn("[weapon][spawn_particle_pointer] ParticleSystem found: %s", obj->GetFullName().c_str());
-                    ps = static_cast<SDK::UParticleSystem*>(obj);
-                }
-            }
-        }
+        SDK::UParticleSystem* ps = (SDK::UParticleSystem*)PluginUtils::load_asset(asset_data);
 
         if (ps == nullptr || m_particle_pointer_offset_component == nullptr) {
             API::get()->log_error("[weapon][spawn_particle_pointer] ParticleSystem not found or RH controller not set up");

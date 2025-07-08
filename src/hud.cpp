@@ -7,11 +7,6 @@ using namespace uevr;
 
 OuterWorldsHUD::OuterWorldsHUD(OuterWorldsMain* main) {
     m_main = main;
-
-    m_ammo_readout = new AttachedWidget();
-    m_character_overview = new AttachedWidget();
-    m_item_degradation = new AttachedWidget();
-    m_compass = new AttachedWidget();
 }
 
 
@@ -21,6 +16,11 @@ OuterWorldsHUD::OuterWorldsHUD(OuterWorldsMain* main) {
 void OuterWorldsHUD::initialize() {
     try {
         if (m_main->get_vr_controllers() != nullptr && m_main->get_vr_controllers()->is_valid() && m_main->get_hud() != nullptr) {
+
+            m_ammo_readout = new AttachedWidget();
+            m_character_overview = new AttachedWidget();
+            m_item_degradation = new AttachedWidget();
+            m_compass = new AttachedWidget();
 
             // default transforms
             SDK::FTransform ammo_readout_transform = {
@@ -70,7 +70,7 @@ void OuterWorldsHUD::initialize() {
 }
 
 void OuterWorldsHUD::cleanup_pointers() {
-    API::get()->log_warn("[weapon][cleanup_pointers] Cleanup");
+    API::get()->log_warn("[hud][cleanup_pointers] Cleanup");
     m_ammo_readout = nullptr;
     m_character_overview = nullptr;
     m_item_degradation = nullptr;
