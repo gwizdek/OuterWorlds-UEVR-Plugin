@@ -1,0 +1,16 @@
+{
+    "hide": false,
+    "hide_legacy": false,
+    "path": [
+        "Acknowledged Pawn",
+        "Components",
+        "AimAssistComponent AimAssist"
+    ],
+    "properties": [
+        {
+            "data": 0,
+            "name": "bAimAssistEnabled"
+        }
+    ],
+    "type": "properties"
+}
