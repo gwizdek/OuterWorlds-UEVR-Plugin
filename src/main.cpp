@@ -289,7 +289,9 @@ void OuterWorldsMain::handle_game_state() {
                     vr->set_mod_value("VR_NativeStereoFix", "true");
                     PluginUtils::reset_height(0.f);
                     vr->recenter_view();
-                    m_vr_weapon->set_particle_pointer_visibility(true);
+                    if (m_vr_weapon != nullptr) {
+                        m_vr_weapon->set_particle_pointer_visibility(true);
+                    }
                     set_ability_overview_visibility(false);
                     break;
 
@@ -304,7 +306,9 @@ void OuterWorldsMain::handle_game_state() {
                     vr->set_mod_value("VR_RoomscaleMovement", "false");
                     vr->set_mod_value("VR_DecoupledPitchUIAdjust", "true");
                     vr->recenter_view();
-                    m_vr_weapon->set_particle_pointer_visibility(false);
+                    if (m_vr_weapon != nullptr) {
+                        m_vr_weapon->set_particle_pointer_visibility(false);
+                    }
                     break;
 
                 case GAME_STATE_COMPUTER_TERMINAL:
