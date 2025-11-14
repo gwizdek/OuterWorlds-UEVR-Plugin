@@ -59,6 +59,7 @@ It's also advised to use DLSS
 5) Launch The Outer Worlds: Spacer's Choice Edition and inject the game with UEVR
 6) Open `Game Settings -> UI -> HUD section`, and set `Aiming Reticle` option to `OFF` - you won't need the reticle anymore
 7) If you're using DLSS bridge, be sure to set `Screen Effects` to Medium or above in the graphics options.
+8) Quest users: If you're experiencing graphical glitches, try setting `Symmetric Horizontal Projection` in the UEVR compatibility tab
 
 ## DLSS Installation
 DLSS Installation is optional, but highly recommended. The DLSS 4 upscaler that uses Transformer Model really shines in this game.
